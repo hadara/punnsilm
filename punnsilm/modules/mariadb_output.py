@@ -63,7 +63,7 @@ class MariadbOutput(core.Output):
         try:
             cur.execute(self._query, parameters)
         except:
-            # reset the connection just in case, it will be automatically
+            # reset the connection just in case. It will be automatically
             # reconnected. We actually should only do it when the connection
             # is problematic but I don't know which exception types cover that
             # besides BrokenPipeError
