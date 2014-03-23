@@ -129,14 +129,23 @@ If either of these rules match the output is sent to the node called writer.
 ### console_output
 This output just prints out everything that is sent to it.
 
+ - stream: either stdout or stderr. Default is stdout
+ - color: color of the text ie. 'red'
+ - highlight: background color ie. 'on_green'
+
 ### log_output
 This node will log all the input with syslog logger. Be careful not to introduce log parsing cycles with it!
+ - msg_format: use this log format string. Default is %(message)
+
+See http://docs.python.org/3/library/logging.html#logrecord-attributes for available format parameters.
 
 ### smtp_output
 Following configuration options are available for this node:
 
  - *addresses*: list of e-mail addresses where to send the output
- - *send_interval*: do not send e-mail more often than this many seconds. Messages that are seen in between are gathered in batches.
+ - *from_address*: mail from address
+ - send_interval: do not send e-mail more often than this many seconds. Messages that are seen in between are gathered in batches.
+ - smtp_server: IP or name of the SMTP server to use for sending. Default is localhost
 
 ### pipe_output
 Writes out to a named pipe output.
@@ -145,8 +154,8 @@ The following configuration options are available for this node:
 
  - *path*: path to the named pipe. Mutually exclusive with the *command* option.
  - *command*: execute a Unix pipeline with the given command and send output to it. Mutually exlusive with the *path* option.
- - *bufsize*: how large should the buffer be. By default system default is used. 0 disabled buffering, 1 sets line based buffering and larger positive numbers set buffer size in bytes.
- - *append_newline*: append newline to the messages before writing
+ - bufsize: how large should the buffer be. By default system default is used. 0 disabled buffering, 1 sets line based buffering and larger positive numbers set buffer size in bytes.
+ - append_newline: append newline to the messages before writing
 
 ### statsd_output
 Sends messages to the Statsd server. If you have nothing in the extradata dictionary of the message this module

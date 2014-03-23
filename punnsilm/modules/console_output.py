@@ -12,7 +12,6 @@ class ConsoleOutput(core.Output):
     name = 'console_output'
 
     _STREAMS = {
-        'stdin': sys.stdin,
         'stdout': sys.stdout,
         'stderr': sys.stderr,
     }
