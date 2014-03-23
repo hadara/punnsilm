@@ -1,0 +1,6 @@
+^.*\.pyc$
+punnsilm.egg-info.*
+.*punnsilm_state.json
+^.*.swp$
+build/
+dist/
