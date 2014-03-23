@@ -31,18 +31,18 @@ Another workaround method is to run a local caching DNS proxy (i.e. Unbound).
 
 # Running
 You can run it with:
-/srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py
+    /srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py
 
 to run it on startup add the following to the crontab of the user that should run it:
-@reboot cd /srv/data/punnsilm/ && /srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py 1> /dev/null 2> /dev/null &
+    @reboot cd /srv/data/punnsilm/ && /srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py 1> /dev/null 2> /dev/null &
 
 There is actually a --daemon option that should do it in a much more Unixy way but it doesn't yet
 quite work as expected.
 
 # Available nodes
 All the nodes have following mandatory attributes:
-  - name: name used in configuration to reference this node
-  - type: type of the node
+ - *name*: name used in configuration to reference this node
+ - *type*: type of the node
 
 All the nodes can have attribute outputs which is a list containing node names where the output from this node should be sent.
 For output nodes this attribute doesn't have any meaning since their output is a sideffect (printing to console, sending e-mail, 
@@ -60,12 +60,12 @@ Doesn't assume any structure from the input. This node is mainly useful as a bas
 implement normalization that is specific to your file format.
 
 It takes care of the following things for you:
-  - *rotation*: if the file size decreases then it's assumed that it was rotated and we will reopen it
-  - *dynamic filenames*: it can handle filenames like log_2014.01.02.log
+ - *rotation*: if the file size decreases then it's assumed that it was rotated and we will reopen it
+ - *dynamic filenames*: it can handle filenames like log_2014.01.02.log
 
 Following configuration options are available for this node:
-  - *stop_on_EOF*: instead of looping at the end of the input and waiting for additional content just stop the chain.
-  - *filename*: filename to open. It can contain any of the time formating directives supported by strftime() [1]
+ - *stop_on_EOF*: instead of looping at the end of the input and waiting for additional content just stop the chain.
+ - *filename*: filename to open. It can contain any of the time formating directives supported by strftime() [1]
 
 1 - http://docs.python.org/3/library/time.html#time.strftime
 
@@ -80,9 +80,9 @@ This input node binds to TCP/UDP port and is able to handle Syslog protocol.
 Currently only RFC3164 is supported.
 
 Following configuration options are available for this node:
- - network_protocol: tcp | udp
- - syslog_protocol: rfc3164
- - address: (hostname|ip, port) for example (127.0.0.1, 5104)
+ - *network_protocol*: tcp | udp
+ - *syslog_protocol*: rfc3164
+ - *address*: (hostname|ip, port) for example (127.0.0.1, 5104)
 
 ## Intermediate
 ### rx_grouper
@@ -90,7 +90,7 @@ This is the most common node in any configuration that matches input against reg
 and forwards result to different output nodes.
 
 Following configuration options are available for this node:
- - groups: a dictionary containing regular expression groups. Key is the name of the group and the group itself is defined with a
+ - *groups*: a dictionary containing regular expression groups. Key is the name of the group and the group itself is defined with a
  dictionary that contains keys rx_list which holds a list of regular expressions and outputs node that contains name of the
  output nodes to forward this message to should any of the regular expressions match.
  regular expressions in the rx_list can either be plain string in which case it's assumed that we should match this expression
@@ -129,18 +129,18 @@ This node will log all the input with syslog logger. Be careful not to introduce
 
 ### smtp_output
 Following configuration options are available for this node:
-  - *addresses*: list of e-mail addresses where to send the output
-  - *send_interval*: do not send e-mail more often than this many seconds. Messages that are seen in between are gathered in batches.
+ - *addresses*: list of e-mail addresses where to send the output
+ - *send_interval*: do not send e-mail more often than this many seconds. Messages that are seen in between are gathered in batches.
 
 ### pipe_output
 Writes out to a named pipe output.
 
 The following configuration options are available for this node:
-  - *path*: path to the named pipe. Mutually exclusive with the *command* option.
-  - *command*: execute a Unix pipeline with the given command and send output to it. Mutually exlusive with the *path* option.
-  
-  - *bufsize*: how large should the buffer be. By default system default is used. 0 disabled buffering, 1 sets line based buffering and larger positive numbers set buffer size in bytes.
-  - *append_newline*: append newline to the messages before writing
+ - *path*: path to the named pipe. Mutually exclusive with the *command* option.
+ - *command*: execute a Unix pipeline with the given command and send output to it. Mutually exlusive with the *path* option.
+ 
+ - *bufsize*: how large should the buffer be. By default system default is used. 0 disabled buffering, 1 sets line based buffering and larger positive numbers set buffer size in bytes.
+ - *append_newline*: append newline to the messages before writing
 
 ### statsd_output
 Sends messages to the Statsd server. If you have nothing in the extradata dictionary of the message this module
@@ -155,15 +155,15 @@ of the key is the name of the group that matched this message. If the name of th
 whose name follows is used as the final component of the statsd key.
 
 The following configuration options are available for this node:
-  - *host*: IP or name of the statsd server (default 127.0.0.1)
-  - *port*: port of the statsd server (default 8125)
-  - *key_prefix*: prefix all the metric names with this string
+ - *host*: IP or name of the statsd server (default 127.0.0.1)
+ - *port*: port of the statsd server (default 8125)
+ - *key_prefix*: prefix all the metric names with this string
 
 ### mariadb_output
 Following configuration options are available for this node:
-  - *query*: query string
-  - *arguments*: list of parameters for the query
-  - *connection_parameters*: dictionary containing SQL connection parameters
+ - *query*: query string
+ - *arguments*: list of parameters for the query
+ - *connection_parameters*: dictionary containing SQL connection parameters
 
 # License
 MIT
