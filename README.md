@@ -133,11 +133,13 @@ This output just prints out everything that is sent to it.
  - color: color of the text ie. 'red'
  - highlight: background color ie. 'on_green'
 
+See [Termcolor](https://pypi.python.org/pypi/termcolor/) for supported values of *color* and *highlight*
+
 ### log_output
 This node will log all the input with syslog logger. Be careful not to introduce log parsing cycles with it!
  - msg_format: use this log format string. Default is %(message)
 
-See http://docs.python.org/3/library/logging.html#logrecord-attributes for available format parameters.
+See the manual of the [logging module](http://docs.python.org/3/library/logging.html#logrecord-attributes) for available format parameters.
 
 ### smtp_output
 Following configuration options are available for this node:
