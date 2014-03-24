@@ -16,7 +16,7 @@ but I only bring py2 support up-to-date every once in a while.
 # Configuration
 By default punnsilm expects to find a configuration in the file called conf.py 
 which should be located in the same directory as the application itself.
-You can specify other configuration files with the --config option
+You can specify alternate configuration file location with the --config option
 
 Main configuration file can in turn include other configuration files.
 
@@ -31,9 +31,11 @@ Another workaround method is to run a local caching DNS proxy (i.e. Unbound).
 
 # Running
 You can run it with:
+
     /srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py
 
 to run it on startup add the following to the crontab of the user that should run it:
+    
     @reboot cd /srv/data/punnsilm/ && /srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py 1> /dev/null 2> /dev/null &
 
 There is actually a --daemon option that should do it in a much more Unixy way but it doesn't yet
@@ -87,6 +89,9 @@ Following configuration options are available for this node:
  - *network_protocol*: tcp | udp
  - *syslog_protocol*: rfc3164
  - *address*: (hostname|ip, port) for example (127.0.0.1, 5104)
+
+### graphite_input
+Monitors graphite time series, can be used to raise alarms when timeseries show unexpected movements.
 
 ## Intermediate
 ### rx_grouper
