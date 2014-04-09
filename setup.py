@@ -25,6 +25,5 @@ setup(name='punnsilm',
     install_requires=install_reqs,
     scripts=[
         'scripts/punnsilm',
-        'scripts/punnsilm-analyzer',
     ],
 )
