@@ -71,12 +71,12 @@ class PunnsilmTests(unittest.TestCase):
 
         try:
             os.unlink(NAMED_PIPE_FILE)
-        except FileNotFoundError:
+        except (OSError, IOError) as e:
             pass
 
         try:
             os.unlink(PIPED_WRITE_FILE)
-        except FileNotFoundError:
+        except (OSError, IOError) as e:
             pass
 
         os.mkfifo(NAMED_PIPE_FILE)
@@ -104,14 +104,10 @@ class PunnsilmTests(unittest.TestCase):
         ]
 
         EXPECTED_TIMERS = [
-            ('test.publicapi2.group1', '200', 0.052),
-            ('test.publicapi2.group1', '', 0.052),
-            ('test.publicapi1.group1', '200', 0.022),
-            ('test.publicapi1.group1', '', 0.022),
-            ('test.publicapi8.group1', '200', 0.023),
-            ('test.publicapi8.group1', '', 0.021),
-            ('test.publicapi1.group1', '200', 0.024),
-            ('test.publicapi1.group1', '', 0.023),
+            (('test.publicapi2.group1', '200', 0.052), ('test.publicapi2.group1', '', 0.052),),
+            (('test.publicapi1.group1', '200', 0.022), ('test.publicapi1.group1', '', 0.022),),
+            (('test.publicapi8.group1', '200', 0.023), ('test.publicapi8.group1', '', 0.021),),
+            (('test.publicapi1.group1', '200', 0.024), ('test.publicapi1.group1', '', 0.023),),
         ]
 
         graph = init_graph(config=CONF, keep_state=False)
@@ -135,8 +131,10 @@ class PunnsilmTests(unittest.TestCase):
             self.assertEqual(msg, exp)
 
         for exp in EXPECTED_TIMERS:
-            msg = timer_q.get()
-            self.assertEqual(msg, exp)
+            msg1 = timer_q.get()
+            msg2 = timer_q.get()
+            self.assertIn(msg1, exp)
+            self.assertIn(msg2, exp)
 
         graph.stop()
 
