@@ -8,6 +8,7 @@ VERSION = '0.4'
 install_reqs = [
     'regex',
     'daemons',
+    'iso8601',
     'pymysql',
     'requests',
     'termcolor',

@@ -2,6 +2,8 @@ import time
 import logging
 import datetime
 
+import iso8601
+
 try:
     import regex as re
 except ImportError:
@@ -10,31 +12,34 @@ except ImportError:
 
 from punnsilm.core import Monitor, FileMonitor, Message
 
-class RsyslogTraditionalFileFormatParser:
-    RE_SYSLOG_MESSAGE = """^(?P<timestamp>[A-Z][a-z]{2}\s+[0-9]+\s[0-9]{2}:[0-9]{2}:[0-9]{2})\s([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s)?(?P<host>[a-zA-Z0-9\-\_\.]+)\s+(?P<content>.*)$"""
-    rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
-    _MONTHMAP = {
-        'Jan': 1,
-        'Feb': 2,
-        'Mar': 3,
-        'Apr': 4,
-        'May': 5,
-        'Jun': 6,
-        'Jul': 7,
-        'Aug': 8,
-        'Sep': 9,
-        'Oct': 10,
-        'Nov': 11,
-        'Dec': 12,
-    }
+_MONTHMAP = {
+    'Jan': 1,
+    'Feb': 2,
+    'Mar': 3,
+    'Apr': 4,
+    'May': 5,
+    'Jun': 6,
+    'Jul': 7,
+    'Aug': 8,
+    'Sep': 9,
+    'Oct': 10,
+    'Nov': 11,
+    'Dec': 12,
+}
 
-    @classmethod
-    def date_parser(cls, raw_ts):
-        # XXX: strptime() is too slow
-        month_abbrev, date, ts_part = raw_ts.split()
-        hour, minute, second = ts_part.split(":")
-        year = time.localtime().tm_year
-        return datetime.datetime(year, cls._MONTHMAP[month_abbrev], int(date), int(hour), int(minute), int(second))
+def timestamp_parser_rfc3164(raw_ts):
+    # XXX: strptime() is too slow
+    month_abbrev, date, ts_part = raw_ts.split()
+    hour, minute, second = ts_part.split(":")
+    year = time.localtime().tm_year
+    return datetime.datetime(year, _MONTHMAP[month_abbrev], int(date), int(hour), int(minute), int(second))
+
+def timestamp_parser_iso8601(raw_ts):
+    return iso8601.parse_date(raw_ts)
+
+class RsyslogTraditionalFileFormatParser:
+    RE_SYSLOG_MESSAGE = """^(?P<timestamp>[A-Z][a-z]{2}\s+[0-9]+\s[0-9]{2}:[0-9]{2}:[0-9]{2})\s([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s)?(?P<host>[a-zA-Z0-9\-\_\.]+)\s(?P<content>.*)$"""
+    rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
 
     @classmethod
     def parse(cls, raw_msg):
@@ -43,7 +48,7 @@ class RsyslogTraditionalFileFormatParser:
         if syslog_msg:
             md = syslog_msg.groupdict()
             try:
-                ts = cls.date_parser(md['timestamp'])
+                ts = timestamp_parser_rfc3164(md['timestamp'])
             except AttributeError:
                 logging.warn('http://bugs.python.org/issue7980 encountered')
                 return None
