@@ -8,7 +8,7 @@ NODE_LIST = [
             'filter', 'email',
         ],
         'params': {
-            'filename': 'test/testlog1.log',
+            'filename': 'testlog1.log',
         }
     },
     {
@@ -40,6 +40,7 @@ NODE_LIST = [
         'type': 'smtp_output',
         'params': {
             'smtp_server': 'localhost',
+            'smtp_port': 1337,
             'from_address': 'hadara@bsd.ee',
             'send_interval': 30,
             'addresses': [

@@ -19,6 +19,7 @@ except NameError:
 MAX_MESSAGES_TO_SEND = 200
 
 DEFAULT_SMTP_SERVER = 'localhost'
+DEFAULT_SMTP_PORT = 25
 # do not send out notifications more often than every X seconds
 DEFAULT_SEND_INTERVAL = 60
 
@@ -41,6 +42,7 @@ class EmailOutput(core.Output):
         self._addresses = kwargs['addresses']
         self._send_interval = kwargs.get('send_interval', DEFAULT_SEND_INTERVAL)
         self._smtp_server = kwargs.get('smtp_server', DEFAULT_SMTP_SERVER)
+        self._smtp_port = kwargs.get('smtp_port', DEFAULT_SMTP_PORT)
         self._last_send_time_uts = None
 
         self._reset_mqueue()
@@ -102,7 +104,7 @@ class EmailOutput(core.Output):
         msg['From'] = me
         msg['To'] = you
         
-        s = smtplib.SMTP(self._smtp_server)
+        s = smtplib.SMTP(self._smtp_server, self._smtp_port)
         s.sendmail(me, toaddrs, msg.as_string())
         s.quit()
 
