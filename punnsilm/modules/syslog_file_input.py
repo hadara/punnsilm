@@ -37,6 +37,11 @@ def timestamp_parser_rfc3164(raw_ts):
 def timestamp_parser_iso8601(raw_ts):
     return iso8601.parse_date(raw_ts)
 
+def timestamp_parser_rfc3339(raw_ts):
+    # XXX: rfc3339 is a subset of iso8601
+    # and rfc5424 defines couple of further restrictions
+    return iso8601.parse_date(raw_ts)
+
 class RsyslogParser:
     @classmethod
     def parse(cls, raw_msg):
@@ -63,9 +68,10 @@ class RsyslogFileFormatParser(RsyslogParser):
     time_parser = timestamp_parser_iso8601
 
 class RsyslogProtocol23FormatParser(RsyslogParser):
-    @classmethod
-    def parse(cls, raw_msg):
-        raise Exception("implement me!")
+    # XXX: SD-ELEMENT parser isn't rfc5424 conformant
+    RE_SYSLOG_MESSAGE = """^\<(?P<priority>\d{1,3})\>1 (?P<timestamp>[^\s]+)\s(?P<host>[^\s]+)\s(?P<appname>[^\s]+)\s(?P<procid>[^\s]+)\s(?P<msgid>[^\s]+)\s(?P<SD>\[[a-zA-Z0-9@]+( [a-zA-Z0-9]+\=[a-zA-Z0-9"]+)+\])\s(?P<content>.*)$"""
+    rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
+    time_parser = timestamp_parser_rfc3339
 
 SYSLOG_FILE_PARSERS = {
     'rsyslog_traditional_file_format': RsyslogTraditionalFileFormatParser,

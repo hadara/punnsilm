@@ -72,11 +72,26 @@ class ParserTests(unittest.TestCase):
                 'host': 'debian7-tpl',
                 'ts': datetime.datetime(2014, 4, 11, 13, 43, 1, 929938, tz),
                 'content': 'sshd[3289]: pam_unix(sshd:session): session opened for user hadara by (uid=0)',
-            }
+            },
         )
         with open(FILENAME, 'r') as fd:
             for line, expected in zip(fd.readlines(), EXPECTED_RESULTS):
                 parsed = RsyslogFileFormatParser.parse(line)
+                self._compare_results(parsed, expected)
+
+    def test_protocol23(self):
+        FILENAME = 'logsamples/rsyslog_protocol23_format.log'
+        tz = FixedOffset(datetime.timedelta(hours=3), 'Fixed offset')
+        EXPECTED_RESULTS = (
+            {
+                'host': 'debian7-tpl',
+                'ts': datetime.datetime(2014, 4, 12, 00, 59, 59, 93000, tz),
+                'content': 'test message akjsdh28GF3f',
+            },
+        )
+        with open(FILENAME, 'r') as fd:
+            for line, expected in zip(fd.readlines(), EXPECTED_RESULTS):
+                parsed = RsyslogProtocol23FormatParser.parse(line)
                 self._compare_results(parsed, expected)
 
 if __name__ == '__main__':
