@@ -1,0 +1,4 @@
+2014-04-11T13:35:35.447571+03:00 debian7-tpl kernel: imklog 5.8.11, log source = /proc/kmsg started.
+2014-04-11T13:35:35.447645+03:00 debian7-tpl rsyslogd: [origin software="rsyslogd" swVersion="5.8.11" x-pid="3247" x-info="http://www.rsyslog.com"] start
+2014-04-11T13:43:01.929431+03:00 debian7-tpl sshd[3289]: Accepted password for hadara from 192.168.57.1 port 51539 ssh2
+2014-04-11T13:43:01.929938+03:00 debian7-tpl sshd[3289]: pam_unix(sshd:session): session opened for user hadara by (uid=0)

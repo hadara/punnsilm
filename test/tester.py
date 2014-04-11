@@ -39,7 +39,7 @@ EXPECTED_MSGS_TESTLOG1 = [
     },
 ]
 
-class PunnsilmTests(unittest.TestCase):
+class PunnsilmSystemTests(unittest.TestCase):
     def test_print(self):
         CONF = "test_console_print.py"
         self.maxDiff = 1000

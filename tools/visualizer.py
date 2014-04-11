@@ -115,6 +115,10 @@ def printer(node):
     else:
         print(handle_RXGrouper(node))
 
+if len(sys.argv) < 2:
+    print("give me name of the configuration file as an argument")
+    sys.exit(-1)
+
 nodelist = read_config(sys.argv[1])
 graph_desc = """
 digraph G {

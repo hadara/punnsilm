@@ -37,10 +37,7 @@ def timestamp_parser_rfc3164(raw_ts):
 def timestamp_parser_iso8601(raw_ts):
     return iso8601.parse_date(raw_ts)
 
-class RsyslogTraditionalFileFormatParser:
-    RE_SYSLOG_MESSAGE = """^(?P<timestamp>[A-Z][a-z]{2}\s+[0-9]+\s[0-9]{2}:[0-9]{2}:[0-9]{2})\s([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s)?(?P<host>[a-zA-Z0-9\-\_\.]+)\s(?P<content>.*)$"""
-    rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
-
+class RsyslogParser:
     @classmethod
     def parse(cls, raw_msg):
         syslog_msg = cls.rx_syslog_message.match(raw_msg)
@@ -48,15 +45,32 @@ class RsyslogTraditionalFileFormatParser:
         if syslog_msg:
             md = syslog_msg.groupdict()
             try:
-                ts = timestamp_parser_rfc3164(md['timestamp'])
+                ts = cls.time_parser(md['timestamp'])
             except AttributeError:
                 logging.warn('http://bugs.python.org/issue7980 encountered')
                 return None
 
             return Message(ts, md['host'], md['content'])
 
+class RsyslogTraditionalFileFormatParser(RsyslogParser):
+    RE_SYSLOG_MESSAGE = """^(?P<timestamp>[A-Z][a-z]{2}\s+[0-9]+\s[0-9]{2}:[0-9]{2}:[0-9]{2})\s([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s)?(?P<host>[a-zA-Z0-9\-\_\.]+)\s(?P<content>.*)$"""
+    rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
+    time_parser = timestamp_parser_rfc3164
+
+class RsyslogFileFormatParser(RsyslogParser):
+    RE_SYSLOG_MESSAGE = """^(?P<timestamp>[^\s]+)\s(?P<host>[a-zA-Z0-9\-\_\.]+)\s(?P<content>.*)$"""
+    rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
+    time_parser = timestamp_parser_iso8601
+
+class RsyslogProtocol23FormatParser(RsyslogParser):
+    @classmethod
+    def parse(cls, raw_msg):
+        raise Exception("implement me!")
+
 SYSLOG_FILE_PARSERS = {
     'rsyslog_traditional_file_format': RsyslogTraditionalFileFormatParser,
+    'rsyslog_file_format': RsyslogFileFormatParser,
+    'rsyslog_protocol23_format': RsyslogProtocol23FormatParser,
 }
 
 class SyslogFileMonitor(FileMonitor):
