@@ -21,10 +21,10 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option('--daemon', help="""daemonize""", dest="daemonize", action="store_true")
     parser.add_option('--pidfile', help="""where to write the PIDfile""", default=DEFAULT_PIDFILE_LOCATION, dest="pidfile")
-    parser.add_option('--keep-state', help="""Read and write the state information so we would be
-able to continue from the last known position after restart""", default=True, dest="keep_state")
+    parser.add_option('--no-state', help="""Read and write the state information so we would be
+able to continue from the last known position after restart""", default=True, action="store_false", dest="keep_state")
     parser.add_option('--test', help="""Test mode. All the Output nodes are replaced with ConsoleOutput
-and --keep-state=False is implied""", dest="test", action="store_true")
+and --no-state is implied""", dest="test", action="store_true")
     parser.add_option('--config', help="""Use configuration file given in argument instead of the default (conf.py)""",
     dest="config", default=DEFAULT_CONFIG_FILE)
     parser.add_option('--node-whitelist', help="""Only use nodes in the given list irregardless of the configuration.
