@@ -85,8 +85,7 @@ def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True
         if test_mode and isinstance(node, core.Output):
             logging.info("replacing %s with ConsoleOutput because test mode is enabled" % (str(node.name),))
             real_node_name = node.name
-            node = ConsoleOutput()
-            node.name = real_node_name
+            node = typemap['console_output'](name=real_node_name)
 
         if not keep_state and hasattr(node, "continue_from_last_known_position"):
             logging.info("overriding continue_from_last_known_position flag")
