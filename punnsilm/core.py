@@ -15,13 +15,18 @@ class StopMonitor(Exception):
     pass
 
 class Message(object):
-    def __init__(self, timestamp, host, content):
+    def __init__(self, timestamp, host, content, extra_params=None):
         self.timestamp = timestamp
         self.host = host
         self.content = content
 
         self.extradata = None
         self.comment = None
+
+        if extra_params is not None:
+            for k, v in extra_params.items():
+                if not hasattr(self, k):
+                    setattr(self, k, v)
 
     def __str__(self):
         retstr = "h:%s ts:%s content:%s" % (str(self.host), str(self.timestamp), self.content)

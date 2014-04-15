@@ -53,7 +53,7 @@ class RFC3164Parser(object):
     @classmethod
     def parse_priority(cls, priority):
         # see http://www.ietf.org/rfc/rfc3164.txt 4.1.1 for the spec
-        facility = priority / 8
+        facility = priority // 8
         severity = priority - (facility * 8)
         return facility, severity
 

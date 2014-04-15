@@ -42,7 +42,16 @@ def timestamp_parser_rfc3339(raw_ts):
     # and rfc5424 defines couple of further restrictions
     return iso8601.parse_date(raw_ts)
 
+def parse_priority(priority):
+    priority = int(priority)
+    # see http://www.ietf.org/rfc/rfc3164.txt 4.1.1 for the spec
+    facility = priority // 8
+    severity = priority - (facility * 8)
+    return facility, severity
+
 class RsyslogParser:
+    MSG_CLS = Message
+
     @classmethod
     def parse(cls, raw_msg):
         syslog_msg = cls.rx_syslog_message.match(raw_msg)
@@ -55,7 +64,7 @@ class RsyslogParser:
                 logging.warn('http://bugs.python.org/issue7980 encountered')
                 return None
 
-            return Message(ts, md['host'], md['content'])
+            return cls.MSG_CLS(ts, md['host'], md['content'], md)
 
 class RsyslogTraditionalFileFormatParser(RsyslogParser):
     RE_SYSLOG_MESSAGE = """^(?P<timestamp>[A-Z][a-z]{2}\s+[0-9]+\s[0-9]{2}:[0-9]{2}:[0-9]{2})\s([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s)?(?P<host>[a-zA-Z0-9\-\_\.]+)\s(?P<content>.*)$"""
@@ -67,7 +76,23 @@ class RsyslogFileFormatParser(RsyslogParser):
     rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
     time_parser = timestamp_parser_iso8601
 
+class RFC5424Message(Message):
+    """adds some rfc5424 specific structure to the message
+    """
+    def __init__(self, *kwargs, extra_params=None):
+        Message.__init__(self, *kwargs)
+        self.parse_priority(self.priority)
+        self.parse_SD()
+
+    def parse_SD(self):
+        # XXX: implement me
+        return
+        
+    def parse_priority(self, priority):
+        self.facility, self.severity = parse_priority(self.priority)
+
 class RsyslogProtocol23FormatParser(RsyslogParser):
+    MSG_CLS = RFC5424Message
     # XXX: SD-ELEMENT parser isn't rfc5424 conformant
     RE_SYSLOG_MESSAGE = """^\<(?P<priority>\d{1,3})\>1 (?P<timestamp>[^\s]+)\s(?P<host>[^\s]+)\s(?P<appname>[^\s]+)\s(?P<procid>[^\s]+)\s(?P<msgid>[^\s]+)\s(?P<SD>\[[a-zA-Z0-9@]+( [a-zA-Z0-9]+\=[a-zA-Z0-9"]+)+\])\s(?P<content>.*)$"""
     rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
@@ -88,13 +113,14 @@ class SyslogFileMonitor(FileMonitor):
     name = 'syslog_file_monitor'
 
     def __init__(self, **kwargs):
-        local_args = {}
+        local_args, parent_args = {}, {}
         for k,v in kwargs.items():
             if k in self.KNOWN_ARGS:
                 local_args[k] = v
-                del kwargs[k]
+            else:
+                parent_args[k] = v
 
-        FileMonitor.__init__(self, **kwargs)
+        FileMonitor.__init__(self, **parent_args)
         file_format = local_args.get('syslog_format', self.DEFAULT_FILE_FORMAT)
         parser = SYSLOG_FILE_PARSERS.get(file_format, None)
 
