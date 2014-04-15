@@ -179,9 +179,10 @@ whose name follows is used as the final component of the statsd key.
 
 The following configuration options are available for this node:
 
- - *host*: IP or name of the statsd server (default 127.0.0.1)
- - *port*: port of the statsd server (default 8125)
  - *key_prefix*: prefix all the metric names with this string
+ - host: IP or name of the statsd server (default 127.0.0.1)
+ - port: port of the statsd server (default 8125)
+ - time_factor: float value that all the incoming timer values should be multiplied with to get seconds. By default the assumption is that the incoming timer values are already in seconds. For example if your values are in ms then you should specify time_factor of 0.001
 
 ### mariadb_output
 Following configuration options are available for this node:

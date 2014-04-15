@@ -15,6 +15,12 @@ class StatsdOutput(core.Output):
         self.host = kwargs.get('host', '127.0.0.1')
         self.port = kwargs.get('port', 8125)
         self.key_prefix = kwargs.get('key_prefix', '')
+        # specifies what multiplier to use for timers to get
+        # seconds. If incoming timer value already is in seconds then
+        # None can be used.
+        self.time_factor = kwargs.get('time_factor', None)
+        if self.time_factor is not None:
+            self.time_factor = float(self.time_factor)
         statsd.Connection.set_defaults(host=self.host, port=self.port)
 
     def append(self, msg):
@@ -37,7 +43,9 @@ class StatsdOutput(core.Output):
 
     def send_timer(self, key, extraname, value):
         timer = statsd.Timer(key)
-        timer.send(extraname, float(v))
+        if self.time_factor is not None:
+            value *= self.time_factor
+        timer.send(extraname, value)
 
     def send_to_statsd(self, msg):
         if self.msg_too_old(msg) == True:
