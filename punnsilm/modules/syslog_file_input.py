@@ -40,7 +40,10 @@ def timestamp_parser_iso8601(raw_ts):
 def timestamp_parser_rfc3339(raw_ts):
     # XXX: rfc3339 is a subset of iso8601
     # and rfc5424 defines couple of further restrictions
-    return iso8601.parse_date(raw_ts)
+
+    # FIXME: removing tz info until I can think of an efficient
+    # method of using either tz aware objects or UTC throughout the system
+    return iso8601.parse_date(raw_ts).replace(tzinfo=None)
 
 def parse_priority(priority):
     priority = int(priority)

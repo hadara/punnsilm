@@ -21,26 +21,25 @@ class FixedOffset(datetime.tzinfo):
 
 class ParserTests(unittest.TestCase):
     def _compare_results(self, parsed, expected):
-        self.assertEqual(parsed.host, expected['host'])
-        self.assertEqual(parsed.timestamp, expected['ts'])
-        self.assertEqual(parsed.content, expected['content'])
+        for key, value in expected.items():
+            self.assertEqual(getattr(parsed, key), value)
 
     def test_traditional(self):
         FILENAME = 'logsamples/rsyslog_traditional_fileformat.log'
         EXPECTED_RESULTS = (
             {
                 'host': 'hadara-laptop2', 
-                'ts': datetime.datetime(2014, 4, 11, 13, 35, 1), 
+                'timestamp': datetime.datetime(2014, 4, 11, 13, 35, 1), 
                 'content': 'CRON[14695]: pam_unix(cron:session): session opened for user root by (uid=0)'
             },
             {
                 'host': 'hadara-laptop2', 
-                'ts': datetime.datetime(2014, 4, 11, 13, 36, 29), 
+                'timestamp': datetime.datetime(2014, 4, 11, 13, 36, 29), 
                 'content': 'dhclient: DHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 13 (xid=0x3d55da5e)',
             },
             {
                 'host': 'hadara-laptop2',
-                'ts': datetime.datetime(2014, 4, 11, 13, 36, 40),
+                'timestamp': datetime.datetime(2014, 4, 11, 13, 36, 40),
                 'content': 'whoopsie[1474]: online',
             },
         )
@@ -55,22 +54,22 @@ class ParserTests(unittest.TestCase):
         EXPECTED_RESULTS = (
             {
                 'host': 'debian7-tpl',
-                'ts': datetime.datetime(2014, 4, 11, 13, 35, 35, 447571, tz),
+                'timestamp': datetime.datetime(2014, 4, 11, 13, 35, 35, 447571, tz),
                 'content': 'kernel: imklog 5.8.11, log source = /proc/kmsg started.',
             },
             {
                 'host': 'debian7-tpl',
-                'ts': datetime.datetime(2014, 4, 11, 13, 35, 35, 447645, tz),
+                'timestamp': datetime.datetime(2014, 4, 11, 13, 35, 35, 447645, tz),
                 'content': 'rsyslogd: [origin software="rsyslogd" swVersion="5.8.11" x-pid="3247" x-info="http://www.rsyslog.com"] start',
             },
             {
                 'host': 'debian7-tpl',
-                'ts': datetime.datetime(2014, 4, 11, 13, 43, 1, 929431, tz),
+                'timestamp': datetime.datetime(2014, 4, 11, 13, 43, 1, 929431, tz),
                 'content': 'sshd[3289]: Accepted password for hadara from 192.168.57.1 port 51539 ssh2',
             },
             {
                 'host': 'debian7-tpl',
-                'ts': datetime.datetime(2014, 4, 11, 13, 43, 1, 929938, tz),
+                'timestamp': datetime.datetime(2014, 4, 11, 13, 43, 1, 929938, tz),
                 'content': 'sshd[3289]: pam_unix(sshd:session): session opened for user hadara by (uid=0)',
             },
         )
@@ -84,11 +83,14 @@ class ParserTests(unittest.TestCase):
         tz = FixedOffset(datetime.timedelta(hours=3), 'Fixed offset')
         EXPECTED_RESULTS = (
             {
-                'host': 'debian7-tpl',
-                'ts': datetime.datetime(2014, 4, 12, 00, 59, 59, 93000, tz),
-                'content': 'test message akjsdh28GF3f',
+                'host': 'XYZ-devel',
+                'timestamp': datetime.datetime(2014, 4, 16, 15, 35, 16, 784000), #, tz),
+                'content': '/static/js/app.js in (8ms)',
+                'msgid': 'perf',
+                'SD': '[mdc@18060 customer="31504044442" ip="127.0.0.1" requestId="XYZ-devel-363" selectedRepresentee="31504044442" sessionId="rgepixbouem6clvwl7g8lzur" xyzContextId="1a2b3c"]',
             },
         )
+
         with open(FILENAME, 'r') as fd:
             for line, expected in zip(fd.readlines(), EXPECTED_RESULTS):
                 parsed = RsyslogProtocol23FormatParser.parse(line)

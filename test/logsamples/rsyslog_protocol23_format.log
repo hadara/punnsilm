@@ -1,1 +1,1 @@
-<131>1 2014-04-12T00:59:59.093+03:00 debian7-tpl MyApp - Audit [mdc@18060 Bar="Bar" foo="Foo"] test message akjsdh28GF3f
+<166>1 2014-04-16T15:35:16.784+03:00 XYZ-devel WEBX_PERF - perf [mdc@18060 customer="31504044442" ip="127.0.0.1" requestId="XYZ-devel-363" selectedRepresentee="31504044442" sessionId="rgepixbouem6clvwl7g8lzur" xyzContextId="1a2b3c"] /static/js/app.js in (8ms)
