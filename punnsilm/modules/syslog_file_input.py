@@ -94,7 +94,7 @@ class RFC5424Message(Message):
 class RsyslogProtocol23FormatParser(RsyslogParser):
     MSG_CLS = RFC5424Message
     # XXX: SD-ELEMENT parser isn't rfc5424 conformant
-    RE_SYSLOG_MESSAGE = """^\<(?P<priority>\d{1,3})\>1 (?P<timestamp>[^\s]+)\s(?P<host>[^\s]+)\s(?P<appname>[^\s]+)\s(?P<procid>[^\s]+)\s(?P<msgid>[^\s]+)\s(?P<SD>\[[a-zA-Z0-9@]+( [a-zA-Z0-9]+\=[a-zA-Z0-9"]+)+\])\s(?P<content>.*)$"""
+    RE_SYSLOG_MESSAGE = """^\<(?P<priority>\d{1,3})\>1 (?P<timestamp>[^\s]+)\s(?P<host>[^\s]+)\s(?P<appname>[^\s]+)\s(?P<procid>[^\s]+)\s(?P<msgid>[^\s]+)\s(?P<SD>\[[a-zA-Z0-9@]+( [a-zA-Z0-9]+\="[^"]+")+\])\s(?P<content>.*)$"""
     rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
     time_parser = timestamp_parser_rfc3339
 
