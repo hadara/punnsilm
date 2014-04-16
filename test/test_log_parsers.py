@@ -24,6 +24,12 @@ class ParserTests(unittest.TestCase):
         for key, value in expected.items():
             self.assertEqual(getattr(parsed, key), value)
 
+    def _test_parser(self, cls, filename, expected_results):
+        with open(filename, 'r') as fd:
+            for line, expected in zip(fd.readlines(), expected_results):
+                parsed = cls.parse(line)
+                self._compare_results(parsed, expected)
+
     def test_traditional(self):
         FILENAME = 'logsamples/rsyslog_traditional_fileformat.log'
         EXPECTED_RESULTS = (
@@ -43,10 +49,7 @@ class ParserTests(unittest.TestCase):
                 'content': 'whoopsie[1474]: online',
             },
         )
-        with open(FILENAME, 'r') as fd:
-            for line, expected in zip(fd.readlines(), EXPECTED_RESULTS):
-                parsed = RsyslogTraditionalFileFormatParser.parse(line)
-                self._compare_results(parsed, expected)
+        self._test_parser(RsyslogTraditionalFileFormatParser, FILENAME, EXPECTED_RESULTS)
 
     def test_fileformat(self):
         FILENAME = 'logsamples/rsyslog_fileformat.log'
@@ -73,10 +76,7 @@ class ParserTests(unittest.TestCase):
                 'content': 'sshd[3289]: pam_unix(sshd:session): session opened for user hadara by (uid=0)',
             },
         )
-        with open(FILENAME, 'r') as fd:
-            for line, expected in zip(fd.readlines(), EXPECTED_RESULTS):
-                parsed = RsyslogFileFormatParser.parse(line)
-                self._compare_results(parsed, expected)
+        self._test_parser(RsyslogFileFormatParser, FILENAME, EXPECTED_RESULTS)
 
     def test_protocol23(self):
         FILENAME = 'logsamples/rsyslog_protocol23_format.log'
@@ -90,11 +90,7 @@ class ParserTests(unittest.TestCase):
                 'SD': '[mdc@18060 customer="31504044442" ip="127.0.0.1" requestId="XYZ-devel-363" selectedRepresentee="31504044442" sessionId="rgepixbouem6clvwl7g8lzur" xyzContextId="1a2b3c"]',
             },
         )
-
-        with open(FILENAME, 'r') as fd:
-            for line, expected in zip(fd.readlines(), EXPECTED_RESULTS):
-                parsed = RsyslogProtocol23FormatParser.parse(line)
-                self._compare_results(parsed, expected)
+        self._test_parser(RsyslogProtocol23FormatParser, FILENAME, EXPECTED_RESULTS)
 
 if __name__ == '__main__':
     unittest.main()
