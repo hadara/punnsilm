@@ -70,12 +70,20 @@ class RXGroup(Group):
         None otherwise
         """
         for fieldname, rx, rx_c in self._rx_list:
-            match_obj = rx_c.match(getattr(msg, fieldname))
+            fieldval = getattr(msg, fieldname)
+            match_obj = rx_c.match(fieldval)
             if match_obj:
+                if __debug__:
+                    logging.debug('%s matched rx %s with %s' % (
+                        str(self), str(rx), fieldval)
+                    )
                 self.mark_matched(msg)
                 return match_obj
-            #else:
-            #    print("no match for %s @ %s" % (msg.content, str(self)))
+            else:
+                if __debug__:
+                    logging.debug('%s no match: rx %s msg: %s' % (
+                        str(self), str(rx), fieldval)
+                    )
 
         return None
 
@@ -152,7 +160,9 @@ class RXGrouper(core.PunnsilmNode):
                 msg_copy.group = group.get_formated_name(group)
                 groupdict = match_group.groupdict()
                 if groupdict:
-                    msg_copy.extradata = groupdict
+                    if msg_copy.extradata is None:
+                        msg_copy.extradata = {}
+                    msg_copy.extradata.update(groupdict)
                 self._subgroup_broadcast(group, msg_copy)
                         
                 have_match = True
