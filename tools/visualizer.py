@@ -17,6 +17,7 @@ node_type_color_map = {
     'output_smtp': 'red',
     'log': 'red',
     'statsd': 'red',
+    'statsd_output': 'red',
 }
 
 """
@@ -54,6 +55,7 @@ digraph G {
 rx_count = 0
 
 seen_edges = set()
+seen_subgroup_names = set()
 
 # we will gather all the node connections into this
 # list and append these to the end of the graph definition
@@ -100,6 +102,15 @@ def handle_RXGrouper(node):
     if node['type'] == 'rx_grouper':
         sub_regexps = 0
         for subgroup, subgroup_node in node['params']['groups'].items():
+            # XXX: subgroup names are unique over the .dot file
+            # If we use the same group_name for 2 different subgroups on
+            # the graph then all the edges will be drawn from the last on
+            # defined. To get around this we will add containers name
+            # as a suffix in case of conflict. Not entirelly correct or fool
+            # proof but is good enough
+            if subgroup in seen_subgroup_names:
+                subgroup += "_" + argd['name']
+            seen_subgroup_names.add(subgroup)
             subgroup_name = normalize_name(subgroup)
             subgroup_node['name'] = subgroup_name
 
