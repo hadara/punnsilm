@@ -240,7 +240,7 @@ class FileMonitor(Monitor):
                 logging.exception('closing file %s' % (str(self.filename),))
                 self._fd.close()
 
-            if l == '':
+            if not l:
                 if self._stop_on_EOF:
                     logging.info('monitor %s stopped' % (self.name,))
                     raise StopMonitor("EOF seen on input")
