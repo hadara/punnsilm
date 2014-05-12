@@ -166,7 +166,9 @@ The following configuration options are available for this node:
  - append_newline: append newline to the messages before writing
 
 ### statsd_output
-Sends messages to the Statsd server. If you have nothing in the extradata dictionary of the message this module
+Sends messages to the Statsd server over UDP.
+
+If you have nothing in the extradata dictionary of the message this module
 will construct a Graphite key from the configured key_prefix value + name of the matched rx_grouper.
 By naming extradata groups in specific ways you can force this module to send out several messages for each
 incoming message.
