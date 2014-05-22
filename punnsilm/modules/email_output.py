@@ -43,6 +43,10 @@ class EmailOutput(core.Output):
         self._send_interval = kwargs.get('send_interval', DEFAULT_SEND_INTERVAL)
         self._smtp_server = kwargs.get('smtp_server', DEFAULT_SMTP_SERVER)
         self._smtp_port = kwargs.get('smtp_port', DEFAULT_SMTP_PORT)
+
+        if len(self._addresses) < 1:
+            logging.warn('no recipients defined in smtp_output %s' % (self.name,))
+
         self._last_send_time_uts = None
 
         self._reset_mqueue()
@@ -88,6 +92,13 @@ class EmailOutput(core.Output):
 
     def _send_mail(self):
         self._last_send_time_uts = time.time()
+
+        if len(self._addresses) < 1:
+            # configuring e-mail output without actual recipients does not make much sense
+            # in general but it is often convenient to just comment out the recipients
+            # if you do not want to get e-mail temporarily
+            return
+
         body = self._create_message_body()
         # FIXME: if we dropped messages because there were to many then we should log it
         # or the e-mail should say so at the very first line
