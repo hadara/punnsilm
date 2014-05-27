@@ -223,7 +223,7 @@ class FileMonitor(Monitor):
 
         try:
             self._fd = open(filename, "rb")
-        except FileNotFoundError:
+        except (OSError, IOError) as e:
             # throttle a bit
             time.sleep(1)
             raise
