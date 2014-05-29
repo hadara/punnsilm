@@ -137,6 +137,7 @@ Following configuration options are available for this node:
  - *patterns*:  should contain a list of triplets containing fieldname, rx match pattern and replacement pattern
 
 Example:
+
     {
         'name': 'rewriter',
         'type': 'rewriter',
