@@ -129,6 +129,32 @@ If either of these rules match the output is sent to the node called writer.
         },
     },
 
+### rewriter
+Allows rewrite/replace of message contents. Uses regular expression replacement function internally which allows
+one to write rather complex replacement rules.
+Following configuration options are available for this node:
+
+ - *patterns*:  should contain a list of triplets containing fieldname, rx match pattern and replacement pattern
+
+Example:
+    {
+        'name': 'rewriter',
+        'type': 'rewriter',
+        'params': {
+            'patterns': (
+                # thw following will replace the word 'static' in the msg.extradata['referer']
+                # with the word 'example' so if the referer is http://static.com the end
+                # result will be http://example.com
+                ('.referer', 'static', 'example'),
+                # places _ in front of the numeric part of the hostname field
+                # ie. publicapi1 -> publicapi_1
+                ('host', '([0-9]+)', '_\\1'),
+            )
+        },
+        'outputs': ['writer'],
+    },
+
+
 
 ## Output
 ### console_output
