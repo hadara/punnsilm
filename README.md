@@ -77,7 +77,12 @@ Following configuration options are available for this node:
 ### syslog_file_monitor
 Extends basic file monitor with syslog specific parser.
 
-Currently only RFC3164 is supported.
+Following configuration options are available for this node:
+
+  - *syslog_format*: optional parameter specifying what syslog file format to parse. Available parsers are: 
+    * rsyslog_traditional_file_format
+    * rsyslog_file_format
+    * rsyslog_protocol23_format
 
 ### syslog_input 
 This input node binds to TCP/UDP port and is able to handle Syslog protocol. 
@@ -143,7 +148,7 @@ Example:
         'type': 'rewriter',
         'params': {
             'patterns': (
-                # thw following will replace the word 'static' in the msg.extradata['referer']
+                # the following will replace the word 'static' in the msg.extradata['referer']
                 # with the word 'example' so if the referer is http://static.com the end
                 # result will be http://example.com
                 ('.referer', 'static', 'example'),
