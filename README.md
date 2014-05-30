@@ -201,6 +201,15 @@ The following configuration options are available for this node:
  - bufsize: how large should the buffer be. By default system default is used. 0 disabled buffering, 1 sets line based buffering and larger positive numbers set buffer size in bytes.
  - append_newline: append newline to the messages before writing
 
+### http_output
+Sends message out over HTTP connection.
+
+The following configuration options are available for this node:
+  - *uri*: URI of the output
+  - method: HTTP method to use. The default is POST
+  - basicauth: tuple holding username and password for basicauth
+  - method: either formencode or json The default is formencode
+
 ### statsd_output
 Sends messages to the Statsd server over UDP.
 

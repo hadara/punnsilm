@@ -1,7 +1,9 @@
 import os
 import sys
+import json
 import time
 import logging
+import datetime
 import threading
 
 import os.path
@@ -13,6 +15,11 @@ class ImplementMe(Exception):
 
 class StopMonitor(Exception):
     pass
+
+class MsgJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.date):
+            return obj.isoformat()
 
 class Message(object):
     def __init__(self, timestamp, host, content, extra_params=None):
@@ -34,6 +41,19 @@ class Message(object):
             retstr += '\n' + self.comment
 
         return retstr
+
+    def dictify(self):
+        retd = {}
+
+        for key in ('timestamp', 'host', 'content'):
+            retd[key] = getattr(self, key)
+        if self.extradata is not None:
+            retd['extradata'] = self.extradata
+
+        return retd
+
+    def __json__(self):
+        return json.dumps(self.dictify(), cls=MsgJSONEncoder)
 
 class PunnsilmNode(object):
     """baseclass for all the input, output and intermediate nodes
