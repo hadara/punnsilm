@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 
+import sys
 import time
 import atexit
 import logging
 import optparse
+
+import logging.config
+import logging.handlers
 
 from daemons.base import Daemon
 
@@ -11,13 +15,32 @@ DEFAULT_PIDFILE_LOCATION = "/tmp/punnsilm.pid"
 
 from punnsilm import state_manager, init_graph, DEFAULT_CONFIG_FILE
 
+LOGLEVEL = logging.WARN
+
+if sys.platform.startswith('linux'):
+    SYSLOG_SOCKET = '/dev/log'
+elif sys.platform.startswith('freebsd'):
+    SYSLOG_SOCKET = "/var/run/log"
+
 class PunnsilmDaemon(Daemon):
     def run(self):
         # XXX: all the action happens in worker threads
         while True:
             time.sleep(1)
 
+def init_log():
+    root_logger = logging.getLogger('')
+    root_logger.setLevel(LOGLEVEL)
+
+    handler = logging.handlers.SysLogHandler(address = SYSLOG_SOCKET)
+    root_logger.addHandler(handler)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(LOGLEVEL)
+    root_logger.addHandler(stream_handler)
+
 def main():
+    global LOGLEVEL
+
     parser = optparse.OptionParser()
     parser.add_option('--daemon', help="""daemonize""", dest="daemonize", action="store_true")
     parser.add_option('--pidfile', help="""where to write the PIDfile""", default=DEFAULT_PIDFILE_LOCATION, dest="pidfile")
@@ -34,7 +57,8 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
     (options, args) = parser.parse_args()
 
     if options.debug:
-        logging.basicConfig(level=logging.INFO)
+        LOGLEVEL = logging.DEBUG
+    init_log()
 
     keep_state = options.keep_state
     # disable state keeping in the test mode
@@ -63,4 +87,5 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
             time.sleep(1)
 
 if __name__ == '__main__':
+    init_log()
     main()
