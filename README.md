@@ -205,6 +205,7 @@ The following configuration options are available for this node:
 Sends message out over HTTP connection.
 
 The following configuration options are available for this node:
+
   - *uri*: URI of the output
   - method: HTTP method to use. The default is POST
   - basicauth: tuple holding username and password for basicauth
