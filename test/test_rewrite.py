@@ -39,11 +39,11 @@ NODE_LIST = [
         'name': 'rewriter',
         'type': 'rewriter',
         'params': {
-            'patterns': (
+            'rules': (
                 # msg.extradata['referer']: str.replace('static', 'example')
                 ('.referer', 'static', 'example'),
                 # msg.host: publicapi1 -> publicapi_1
-                ('host', '([0-9]+)', '_\\1'),
+                ('host', '([0-9]+)', '_\\1', {'type': 'regexp'}),
             )
         },
         'outputs': ['writer'],

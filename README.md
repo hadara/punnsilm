@@ -135,11 +135,15 @@ If either of these rules match the output is sent to the node called writer.
     },
 
 ### rewriter
-Allows rewrite/replace of message contents. Uses regular expression replacement function internally which allows
-one to write rather complex replacement rules.
+Allows rewrite/replace of message contents.
 Following configuration options are available for this node:
 
- - *patterns*:  should contain a list of triplets containing fieldname, rx match pattern and replacement pattern
+ - *rules*:  should contain a list of rules where each rule is specified as a tuple of either 3 or 4 elements.
+ The first three mandatory elements are: message fieldname, pattern and replacement
+ The fourth argument is optional and can be used to specify options for this specific rule. If present it should
+ be a dictionary where at least the *type* key is present with value of either *regexp* or *replace* which specifies
+ the type of the rule. The default type is *replace* which means that simple string replacement will be done.
+ *regexp* uses *re.sub()* internally which allows much more complicated modifications to be done than simple replace.
 
 Example:
 
@@ -147,14 +151,14 @@ Example:
         'name': 'rewriter',
         'type': 'rewriter',
         'params': {
-            'patterns': (
+            'rules': (
                 # the following will replace the word 'static' in the msg.extradata['referer']
                 # with the word 'example' so if the referer is http://static.com the end
                 # result will be http://example.com
                 ('.referer', 'static', 'example'),
                 # places _ in front of the numeric part of the hostname field
                 # ie. publicapi1 -> publicapi_1
-                ('host', '([0-9]+)', '_\\1'),
+                ('host', '([0-9]+)', '_\\1', {'type': 'regexp'}),
             )
         },
         'outputs': ['writer'],
