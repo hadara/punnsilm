@@ -82,7 +82,7 @@ class RsyslogFileFormatParser(RsyslogParser):
 class RFC5424Message(Message):
     """adds some rfc5424 specific structure to the message
     """
-    def __init__(self, *kwargs, extra_params=None):
+    def __init__(self, *kwargs):
         Message.__init__(self, *kwargs)
         self.parse_priority(self.priority)
         self.parse_SD()
