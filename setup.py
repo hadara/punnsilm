@@ -9,7 +9,7 @@ install_reqs = [
     'regex',
     'daemons',
     'iso8601',
-    'pymysql',
+    'pymysql == 0.6.2',
     'requests',
     'termcolor',
     'python-statsd',
