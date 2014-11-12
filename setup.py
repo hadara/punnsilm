@@ -12,6 +12,7 @@ install_reqs = [
     'pymysql',
     'requests',
     'termcolor',
+    'setproctitle',
     'python-statsd',
 ]
 

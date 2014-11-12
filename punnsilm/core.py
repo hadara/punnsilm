@@ -5,6 +5,7 @@ import time
 import logging
 import datetime
 import threading
+import setproctitle
 import multiprocessing
 
 import os.path
@@ -137,6 +138,9 @@ class Monitor(PunnsilmNode):
         return self._worker
 
     def _run(self):
+        if self.concurrency_cls != threading.Thread:
+            setproctitle.setproctitle('punnsilm: '+self.name)
+
         initialize_mode = True
 
         if self.continue_from_last_known_position != True:
