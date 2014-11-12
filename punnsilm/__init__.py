@@ -3,6 +3,8 @@ import glob
 import inspect
 import logging
 import importlib
+import threading
+import multiprocessing
 
 import os.path
 
@@ -10,6 +12,8 @@ from .core import PunnsilmNode, Output
 
 DEFAULT_CONFIG_FILE = "conf.py"
 DEFAULT_MODULEDIR = "modules"
+
+DEFAULT_CONCURRENCY_METHOD = "threads"
 
 # holds name to node class mapping, filled dynamically on startup
 typemap = {}
@@ -63,7 +67,7 @@ def create_node(node_conf):
 
     return node
 
-def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True):
+def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True, concurrency='threads'):
     """creates all the nodes specified in the configuration given in the argument
     returns result as a dictionary containing node.name -> node mappings
     """
@@ -90,6 +94,13 @@ def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True
         if not keep_state and hasattr(node, "continue_from_last_known_position"):
             logging.info("overriding continue_from_last_known_position flag")
             node.continue_from_last_known_position = False
+
+        if concurrency == 'threads':
+            node.concurrency_cls = threading.Thread
+        elif concurrency == 'processes':
+            node.concurrency_cls = multiprocessing.Process
+        else:
+            logging.error('unknown concurrency method %s specified' % (concurrency,))
 
         nodemap[node.name] = node
             
@@ -181,11 +192,11 @@ def read_config(filename=None):
 
     return retd['NODE_LIST']
     
-def init_graph(node_whitelist=None, test_mode=False, keep_state=True, config=None):
+def init_graph(node_whitelist=None, test_mode=False, keep_state=True, config=None, concurrency=DEFAULT_CONCURRENCY_METHOD):
     """reads in configuration and initializes data structures
     """
     load_modules(DEFAULT_MODULEDIR)
 
     nodelist = read_config(config)
-    nodemap = create_nodes(nodelist, node_whitelist=node_whitelist, test_mode=test_mode, keep_state=keep_state)
+    nodemap = create_nodes(nodelist, node_whitelist=node_whitelist, test_mode=test_mode, keep_state=keep_state, concurrency=concurrency)
     return PunnsilmGraph(nodemap)

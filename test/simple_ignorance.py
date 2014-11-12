@@ -2,11 +2,19 @@ SSHD_TAG = "^sshd\[\d+\]: "
 
 NODE_LIST = [
     {
-        'name': 'syslog_source',
+        'name': 'syslog_source2',
         'type': 'syslog_file_monitor',
         'outputs': ['filter',],
         'params': {
             'filename': 'auth.log',
+        }
+    },
+    {
+        'name': 'syslog_source',
+        'type': 'syslog_file_monitor',
+        'outputs': ['filter',],
+        'params': {
+            'filename': 'auth2.log',
         }
     },
     {
