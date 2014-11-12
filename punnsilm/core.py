@@ -134,6 +134,7 @@ class Monitor(PunnsilmNode):
         self._worker = self.concurrency_cls(target=self._run)
         self._worker.daemon = True
         self._worker.start()
+        return self._worker
 
     def _run(self):
         initialize_mode = True

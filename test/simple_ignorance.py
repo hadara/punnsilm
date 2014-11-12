@@ -7,6 +7,7 @@ NODE_LIST = [
         'outputs': ['filter',],
         'params': {
             'filename': 'auth.log',
+            'stop_on_EOF': True,
         }
     },
     {
@@ -15,6 +16,7 @@ NODE_LIST = [
         'outputs': ['filter',],
         'params': {
             'filename': 'auth2.log',
+            'stop_on_EOF': True,
         }
     },
     {

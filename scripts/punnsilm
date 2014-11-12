@@ -87,7 +87,7 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
 
     graph = init_graph(node_whitelist=node_whitelist, test_mode=options.test, keep_state=keep_state, config=options.config, 
                 concurrency=options.concurrency_method)
-    graph.start()
+    runnables = graph.start()
 
     if options.daemonize:
         daemon = PunnsilmDaemon(pidfile=options.pidfile)
@@ -98,10 +98,9 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
     else:
         if keep_state:
             atexit.register(state_manager.state_writer, graph.nodemap)
-        while 1:
-            # XXX: probably we can do something more intelligent while waiting
-            # for death of our children or at least call wait() or smth.
-            time.sleep(1)
+
+        for runnable in runnables:
+            runnable.join()
 
 if __name__ == '__main__':
     init_log()

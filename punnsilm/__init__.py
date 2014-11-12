@@ -28,8 +28,15 @@ class PunnsilmGraph(object):
             node.connect_outputs(self.nodemap)
 
     def start(self):
+        """start the activity of the graph.
+        returns list of runnable objects
+        """
+        runnables = []
         for node_name, node in self.nodemap.items():
-            node.run()
+            runnable = node.run()
+            if runnable:
+                runnables.append(runnable)
+        return runnables
 
     def stop(self):
         for node_name, node in self.nodemap.items():
@@ -99,8 +106,6 @@ def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True
             node.concurrency_cls = threading.Thread
         elif concurrency == 'processes':
             node.concurrency_cls = multiprocessing.Process
-        else:
-            logging.error('unknown concurrency method %s specified' % (concurrency,))
 
         nodemap[node.name] = node
             
