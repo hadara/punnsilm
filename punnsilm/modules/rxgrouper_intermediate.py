@@ -1,4 +1,7 @@
+import os
 import copy
+import json
+import time
 import logging
 
 try:
@@ -8,6 +11,9 @@ except ImportError:
     import re
 
 from punnsilm import core
+
+STATS_ROOT = "/tmp/"
+STATS_WRITE_EVERY_X_MSGS = 50000
 
 class Group(object):
     def __init__(self, name, outputs):
@@ -39,7 +45,12 @@ class RXGroup(Group):
         Group.__init__(self, name, outputs)
         self.disables_fallthrough = disables_fallthrough
         self.name_transform = name_transform
+        self._perfd = {}
+
         self._init_rx_list(rx_list)
+
+    def get_performance_counters(self):
+        return self._perfd
 
     def get_formated_name(self, group):
         """if name_transform is specified for this group then return name formated with matched RX groupdict
@@ -60,19 +71,28 @@ class RXGroup(Group):
         # or tuple where the first element is fieldname and the second one holds regexp
         for rx in rx_list:
             if isinstance(rx, type('')):
-                self._rx_list.append((self.DEFAULT_FIELD, rx, re.compile(rx)))
+                entry = (self.DEFAULT_FIELD, rx, re.compile(rx))
             else:
                 fieldname, rx = rx
-                self._rx_list.append((fieldname, rx, re.compile(rx)))
+                entry = (fieldname, rx, re.compile(rx))
+            self._rx_list.append(entry)
+            self._perfd[rx] = {'evaluations': 0, 'matches': 0, 'total_time': 0}
 
     def match(self, msg):
         """returns re match object if msg matches this group
         None otherwise
         """
+        pcounter = time.perf_counter
         for fieldname, rx, rx_c in self._rx_list:
             fieldval = getattr(msg, fieldname)
+            start_time = pcounter()
             match_obj = rx_c.match(fieldval)
+            time_spent = pcounter() - start_time
+            perf_rec = self._perfd[rx]
+            perf_rec['evaluations'] += 1
+            perf_rec['total_time'] += time_spent
             if match_obj:
+                perf_rec['matches'] += 1
                 if __debug__:
                     logging.debug('%s matched rx %s with %s' % (
                         str(self), str(rx), fieldval)
@@ -95,6 +115,13 @@ class RXGrouper(core.PunnsilmNode):
         groups = kwargs['groups']
         del kwargs['groups']
 
+        # is it OK to modify messages that go through us or should
+        # make a copy that we modify and send downstream.
+        # This might be useful in the cases when one wants to ensure
+        # that upstream/parallel nodes that also get this message
+        # won't see our modifications
+        want_copy = kwargs.get('want_copy', False)
+
         # add list of all the unique outputs used by our subgroups so the
         # parent class would be able to initialize all the outputs correctly
         kwargs['outputs'] = self._gather_output_list_from_subgroups(groups)
@@ -112,6 +139,13 @@ class RXGrouper(core.PunnsilmNode):
         # that keeps track of what messages have been shown but it would
         # be slower
         self._missing_outputs = set()
+
+        if want_copy:
+            self._copier = copy.copy
+        else:
+            self._copier = lambda x: x
+
+        self._stats_write_counter = 0
 
     def _gather_output_list_from_subgroups(self, groups):
         """create a list of unique output node names that are used in subgroups of this grouper
@@ -138,6 +172,7 @@ class RXGrouper(core.PunnsilmNode):
         except:
             logging.error('error encountered while initializing subgroup "%s" conf: %s' % (group_name, str(group_config)))
             raise
+
         self._subgroups[group_name] = group
 
     def add_output(self, output):
@@ -146,17 +181,29 @@ class RXGrouper(core.PunnsilmNode):
         if output.name in self._missing_outputs:
             self._missing_outputs.discard(output.name)
 
+    def write_stats(self):
+        stats = {}
+        stats_file = os.path.join(STATS_ROOT, "punnsilm_stats_%s.json" % (self.name,))
+
+        for name, group in self._subgroups.items():
+            perf_counters = group.get_performance_counters()
+            stats[name] = perf_counters
+
+        with open(stats_file, "w+") as fd:
+            fd.write(json.dumps(stats, sort_keys=True, indent=4))
+
     def append(self, msg):
         have_match = False
 
         for group in self._subgroups.values():
             match_group = group.match(msg)
             if match_group is not None:
-                # since multiple groups might match the message and if we add some
-                # extra attributes to it we have to make a copy so downstream nodes
+                # Multiple groups might match the message and if we add some
+                # extra attributes to it we might have to make a copy so downstream nodes
                 # would see a consistent view even if the message is passed between the
                 # threads and modified afterwards
-                msg_copy = copy.copy(msg)
+                # It's usually not required though and is just NOOP
+                msg_copy = self._copier(msg)
                 msg_copy.group = group.get_formated_name(group)
                 groupdict = match_group.groupdict()
                 if groupdict:
@@ -180,6 +227,11 @@ class RXGrouper(core.PunnsilmNode):
                 # do the same for fallthrough
                 msg.group = fallthrough.name
                 self._subgroup_broadcast(fallthrough, msg)
+
+        self._stats_write_counter += 1
+        if self._stats_write_counter > STATS_WRITE_EVERY_X_MSGS:
+            self.write_stats()
+            self._stats_write_counter = 0
 
     def _subgroup_broadcast(self, group, msg):
         for group_output in group.outputs:
