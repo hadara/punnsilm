@@ -12,6 +12,7 @@ install_reqs = [
     'pymysql == 0.6.2',
     'requests',
     'termcolor',
+    'setproctitle',
     'python-statsd',
 ]
 

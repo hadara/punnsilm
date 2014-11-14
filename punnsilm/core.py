@@ -5,6 +5,8 @@ import time
 import logging
 import datetime
 import threading
+import setproctitle
+import multiprocessing
 
 import os.path
 
@@ -120,8 +122,9 @@ class Monitor(PunnsilmNode):
         self.msg_cls = None
         self.continue_from_last_known_position = True
 
-        self._worker_thr = threading.Thread(target=self._run)
-        self._worker_thr.daemon = True
+        # what concurrency method to use, might be
+        # overriden externally
+        self.concurrency_cls = threading.Thread
 
         self._want_exit = False
 
@@ -129,9 +132,15 @@ class Monitor(PunnsilmNode):
         self._want_exit = True
 
     def run(self):
-        self._worker_thr.start()
+        self._worker = self.concurrency_cls(target=self._run)
+        self._worker.daemon = True
+        self._worker.start()
+        return self._worker
 
     def _run(self):
+        if self.concurrency_cls != threading.Thread:
+            setproctitle.setproctitle('punnsilm: '+self.name)
+
         initialize_mode = True
 
         if self.continue_from_last_known_position != True:

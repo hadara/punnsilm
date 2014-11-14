@@ -15,6 +15,8 @@ DEFAULT_PIDFILE_LOCATION = "/tmp/punnsilm.pid"
 
 from punnsilm import state_manager, init_graph, DEFAULT_CONFIG_FILE
 
+KNOWN_CONCURRENCY_METHODS = ("threads", "processes")
+
 LOGLEVEL = logging.WARN
 
 if sys.platform.startswith('linux'):
@@ -50,6 +52,12 @@ able to continue from the last known position after restart""", default=True, ac
 and --no-state is implied""", dest="test", action="store_true")
     parser.add_option('--config', help="""Use configuration file given in argument instead of the default (conf.py)""",
     dest="config", default=DEFAULT_CONFIG_FILE)
+    parser.add_option('--concurrency-method', help="""Which concurrency method to use. Currently supported values are 
+threads and processes.  The default is threads. 
+Using processes allows for better use of multiple cores but in the current implementation
+also duplicates all the graph nodes in each process. So if you have a graph node that shares input that is sourced
+from severl different inputs you will end up with two instances of that node which might have interesting consequences.""",
+    dest="concurrency_method", default=None)
     parser.add_option('--node-whitelist', help="""Only use nodes in the given list irregardless of the configuration.
 Basically we will try to build the initial graph as we normally would but will ignore all of the
 nodes that aren't present in this whitelist. Argument should be comma separated list on node names.""", dest="node_whitelist")
@@ -58,7 +66,15 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
 
     if options.debug:
         LOGLEVEL = logging.DEBUG
+
     init_log()
+
+    if options.concurrency_method and options.concurrency_method not in KNOWN_CONCURRENCY_METHODS:
+        logging.error('unknown concurrency method %s known methods are %s' % (
+            options.concurrency_method, KNOWN_CONCURRENCY_METHODS)
+        )
+        sys.exit(-1)
+
 
     keep_state = options.keep_state
     # disable state keeping in the test mode
@@ -69,8 +85,9 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
     if options.node_whitelist:
         node_whitelist = options.node_whitelist.split(",")
 
-    graph = init_graph(node_whitelist=node_whitelist, test_mode=options.test, keep_state=keep_state, config=options.config)
-    graph.start()
+    graph = init_graph(node_whitelist=node_whitelist, test_mode=options.test, keep_state=keep_state, config=options.config, 
+                concurrency=options.concurrency_method)
+    runnables = graph.start()
 
     if options.daemonize:
         daemon = PunnsilmDaemon(pidfile=options.pidfile)
@@ -81,10 +98,9 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
     else:
         if keep_state:
             atexit.register(state_manager.state_writer, graph.nodemap)
-        while 1:
-            # XXX: probably we can do something more intelligent while waiting
-            # for death of our children or at least call wait() or smth.
-            time.sleep(1)
+
+        for runnable in runnables:
+            runnable.join()
 
 if __name__ == '__main__':
     init_log()
