@@ -38,6 +38,8 @@ class EmailOutput(core.Output):
                 logging.error('missing mandatory parameter %s' % (parameter,))
                 raise Exception
 
+        self._send_thr = None
+
         self._from_address = kwargs.get('from_address', None)
         self._addresses = kwargs['addresses']
         self._send_interval = kwargs.get('send_interval', DEFAULT_SEND_INTERVAL)
@@ -132,4 +134,11 @@ class EmailOutput(core.Output):
             # XXX: in some cases it might be a good idea to log queue overflows
             # but we certainly shouldn't do that for every incoming message.
             return None
+
+        if self._send_thr is None:
+            # FIXME: temporary workaround for the case when graph is started with concurrency_method=processes
+            # in that case there will be multiple copies of the same graph node (one for each input)
+            # but the worker is started only in the first instance.
+            self.run()
+
         self._mqueue.append(msg)
