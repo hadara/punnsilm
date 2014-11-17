@@ -15,6 +15,11 @@ from punnsilm import core
 STATS_ROOT = "/tmp/"
 STATS_WRITE_EVERY_X_MSGS = 50000
 
+if hasattr(time, "perf_counter"):
+    pcounter = time.perf_counter
+else:
+    pcounter = time.clock
+
 class Group(object):
     def __init__(self, name, outputs):
         self.name = name
@@ -82,7 +87,6 @@ class RXGroup(Group):
         """returns re match object if msg matches this group
         None otherwise
         """
-        pcounter = time.perf_counter
         for fieldname, rx, rx_c in self._rx_list:
             fieldval = getattr(msg, fieldname)
             start_time = pcounter()
