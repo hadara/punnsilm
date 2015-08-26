@@ -88,7 +88,11 @@ class RXGroup(Group):
         None otherwise
         """
         for fieldname, rx, rx_c in self._rx_list:
-            fieldval = getattr(msg, fieldname)
+            if fieldname[0] == '.':
+                # references extradata
+                fieldval = msg.extradata[fieldname[1:]]
+            else:
+                fieldval = getattr(msg, fieldname)
             start_time = pcounter()
             match_obj = rx_c.match(fieldval)
             time_spent = pcounter() - start_time
