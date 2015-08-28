@@ -9,7 +9,11 @@ import optparse
 import logging.config
 import logging.handlers
 
-from daemons.base import Daemon
+#from daemons.base import Daemon
+try:
+    from daemons.prefab.run import RunDaemon as Daemon
+except ImportError:
+    from daemons.base import Daemon
 
 DEFAULT_PIDFILE_LOCATION = "/tmp/punnsilm.pid"
 
@@ -55,8 +59,8 @@ and --no-state is implied""", dest="test", action="store_true")
     parser.add_option('--concurrency-method', help="""Which concurrency method to use. Currently supported values are 
 threads and processes.  The default is threads. 
 Using processes allows for better use of multiple cores but in the current implementation
-also duplicates all the graph nodes in each process. So if you have a graph node that shares input that is sourced
-from severl different inputs you will end up with two instances of that node which might have interesting consequences.""",
+also duplicates all the graph nodes in each process. So if you have a graph node that has inputs which are sourced
+from several different Input nodes you will end up with two instances of that node which might have interesting consequences.""",
     dest="concurrency_method", default=None)
     parser.add_option('--node-whitelist', help="""Only use nodes in the given list irregardless of the configuration.
 Basically we will try to build the initial graph as we normally would but will ignore all of the
