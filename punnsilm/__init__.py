@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import inspect
 import logging
@@ -170,6 +171,10 @@ def read_config(filename=None):
 
     if filename == None:
         filename = DEFAULT_CONFIG_FILE
+
+    if not os.path.exists(filename):
+        logging.error("configuration file %s does not exist!" % (filename,))
+        sys.exit(-1)
 
     # we create a special import_nodes function that can be used
     # from the main configuration file to read in additional configuration
