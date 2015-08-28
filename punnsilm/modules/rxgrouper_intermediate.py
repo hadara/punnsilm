@@ -90,7 +90,16 @@ class RXGroup(Group):
         for fieldname, rx, rx_c in self._rx_list:
             if fieldname[0] == '.':
                 # references extradata
-                fieldval = msg.extradata[fieldname[1:]]
+                try:
+                    fieldval = msg.extradata[fieldname[1:]]
+                except KeyError:
+                    logging.warn('grouper %s: key %s not found in %s' % 
+                        (self.name, str(fieldname), str(msg.extradata)))
+                    continue
+                except TypeError:
+                    logging.warn('grouper %s: unable to match field %s against message that doesnt have any parsed attributes' % (
+                        self.name, str(fieldname),))
+                    continue
             else:
                 fieldval = getattr(msg, fieldname)
             start_time = pcounter()
