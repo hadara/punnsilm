@@ -43,7 +43,7 @@ NODE_LIST = [
                 'group1': {
                     'rx_list': [
                         # match only requests that take more than 0.022s
-                        ('._backend_time', '0\.(0[3-9]+|0\.02[3-9]+)'),
+                        ('._backend_time', '([1-9]+\.[0-9]+|0\.(0[3-9]+|0\.02[3-9]+))'),
                     ],
                     'outputs': ['writer',],
                 },
