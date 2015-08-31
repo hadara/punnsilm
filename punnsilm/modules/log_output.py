@@ -20,6 +20,7 @@ class LogOutput(Output):
         self._msg_format = kwargs.get('msg_format', '%(message)s')
 
         my_logger = logging.getLogger('output_'+kwargs['name'])
+        my_logger.propagate = False
         my_logger.setLevel(logging.DEBUG)
 
         handler = logging.handlers.SysLogHandler(address = SYSLOG_SOCKET)
