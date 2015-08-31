@@ -3,7 +3,8 @@ Punnsilm is a tool for analyzing, monitoring, transforming and sending logs.
 
 # Install
 Punnsilm is developed on Python 3.3. In general I try to keep it Python 2.7 compatible
-but I only bring py2 support up-to-date every once in a while.
+but I only bring py2 support up-to-date every once in a while so any random checkout might
+not work under py2
 
     sudo apt-get install python-regex
     cd /srv/data
@@ -179,9 +180,14 @@ See [Termcolor](https://pypi.python.org/pypi/termcolor/) for supported values of
 ### log_output
 This node will log all the input to the syslog. Be careful not to introduce log parsing cycles with it!
 
- - msg_format: use this log format string. Default is %(message)
+ - logger_format: used to format log string. See the manual of the [logging module](http://docs.python.org/3/library/logging.html#logrecord-attributes) for available format parameters. Default is "%(message)"
+ - msg_format: used to format log messages. Special variable names host, timestamp, contents and extradata can be used to include various log message data. 
 
-See the manual of the [logging module](http://docs.python.org/3/library/logging.html#logrecord-attributes) for available format parameters.
+Example:
+
+    'msg_format': '{timestamp} ALARM: {host} {extradata[_http_code_value]} {extradata[_backend_time]}',
+
+See test/test_log_output.py for complete example.
 
 ### smtp_output
 Following configuration options are available for this node:
