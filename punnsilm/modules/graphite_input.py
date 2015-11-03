@@ -13,6 +13,8 @@ import requests
 
 from punnsilm import core
 
+DEFAULT_POLLING_INTERVAL_SEC = 60
+
 class GraphiteDashboardMonitor(core.Monitor):
     """monitors a Graphite dashboard
     Expects all the graphs to have timeseries called:
@@ -23,10 +25,24 @@ class GraphiteDashboardMonitor(core.Monitor):
     name = 'graphite_input'
 
     def __init__(self, **kwargs):
-        MY_ARGS = ['dashboard_uri', 'auth']
-        for arg in MY_ARGS:
+        MY_MANDATORY_ARGS = ['dashboard_uri',]
+        for arg in MY_MANDATORY_ARGS:
             setattr(self, arg, kwargs[arg])
             del kwargs[arg]
+
+
+        MY_OPTIONAL_ARGS = ['auth', 'polling_interval_sec']
+        for arg in MY_OPTIONAL_ARGS:
+            if arg in kwargs:
+                setattr(self, arg, kwargs[arg])
+                del kwargs[arg]
+            else:
+                setattr(self, arg, None)
+
+        if self.polling_interval_sec is not None:
+            self.polling_interval_sec = int(self.polling_interval_sec)
+        else:
+            self.polling_interval_sec = DEFAULT_POLLING_INTERVAL_SEC
 
         self.monitored_graphs = []
 
@@ -37,8 +53,7 @@ class GraphiteDashboardMonitor(core.Monitor):
         self._parse_dashboard()
 
     def _parse_dashboard(self):
-        res = requests.get(self.dashboard_uri, auth=self.auth)
-        res = json.loads(res.text)
+        res = requests.get(self.dashboard_uri, auth=self.auth).json()
         graphs = res['state']['graphs']
 
         for graph in graphs:
@@ -63,7 +78,7 @@ class GraphiteDashboardMonitor(core.Monitor):
             timeserie_name = target.split('"')[-2].strip()
 
     def _get_graph_data(self, uri):
-        print("URI IS:", uri)
+        logging.debug("graph data URI is:", uri)
         uri = self.host + uri + '&format=json'
         res = requests.get(uri, auth=self.auth)
         if res.status_code != 200:
@@ -78,10 +93,8 @@ class GraphiteDashboardMonitor(core.Monitor):
         if data is None:
             return None
 
-        pprint.pprint(data)
         datad = {}
         for timeserie in data:
-            print("timeseries:", timeserie)
             name = timeserie['target']
             name_prefix = name.split(" ", 1)[0]
 
@@ -89,7 +102,13 @@ class GraphiteDashboardMonitor(core.Monitor):
                 logging.debug('ignoring timeserie %s on %s' % (name, graph['graph_uri']))
                 continue
 
-            last_datapoint = timeserie['datapoints'][-1]
+            # XXX: looking at second last instead of the last one because the last one
+            # is often not yet complete and has value None
+            if len(timeserie['datapoints']) > 1:
+                idx = -2
+            else:
+                idx = -1
+            last_datapoint = timeserie['datapoints'][idx]
             tmpd = {
                 'name': name,
                 'datapoint': last_datapoint,
@@ -102,6 +121,7 @@ class GraphiteDashboardMonitor(core.Monitor):
 
         current = datad['current']
         current_value, current_value_ts = current['datapoint']
+        logging.debug("current value is:", current_value, current_value_ts)
 
         if current_value is None:
             logging.debug('current value is None. Ignoring it.')
@@ -110,26 +130,45 @@ class GraphiteDashboardMonitor(core.Monitor):
         if 'upper' in datad:
             upper = datad['upper']
             upper_value, upper_value_ts = upper['datapoint']
+            logging.debug("upper value:", upper_value, upper_value_ts)
             if current_value >= upper_value:
-                self.send_alarm(current, upper, graph)
+                logging.debug("UPPER IN ALARM")
+                self.send_alarm("above", current, upper, graph)
         elif 'lower' in datad:
             lower = datad['lower']
             lower_value, lower_value_ts = lower['datapoint']
+            logging.debug("lower value:", lower_value, lower_value_ts)
             if current_value <= lower_value:
-                self.send_alarm(current, lower, graph)
+                logging.debug("LOWER IN ALARM")
+                self.send_alarm("below", current, lower, graph)
 
-    def send_alarm(self, current, threshold, graph):
-        msg = 'current_value: %s threshold: %s graph: %s' % (str(current), str(threshold), str(graph['graph_uri']))
-        content = msg
-        logging.debug(msg)
+    def send_alarm(self, direction, current, threshold, graph):
+        graph_title = graph['parameter_dict']['title']
+        current_value = current['datapoint'][0]
+        threshold_value = threshold['datapoint'][0]
+        short_desc = '%s: value is %s threshold' % (
+            graph_title, str(direction),
+        )
+        long_desc = '%s: value is %s threshold.\ncurrent_value: %s threshold: %s\n graph URI: %s' % (
+            graph_title, str(direction), str(current_value), str(threshold_value), str(graph['graph_uri'])
+        )
+        content = short_desc
+
+        logging.debug(long_desc)
         # XXX: the assumption here is that the the timestamp of the current value is in local timezone
-        # instead of the UTC. 
+        # instead of UTC
         timestamp = datetime.datetime.fromtimestamp(current['datapoint'][1])
         # XXX: what host should we use?
         host = 'graphite'
-        print(graph['parameter_dict'])
+        logging.debug("PARAMS:", graph['parameter_dict'])
 
-        self.broadcast(core.Message(timestamp, host, content))
+        msg_obj = core.Message(timestamp, host, content)
+        msg_obj.extradata = {
+            'full_uri': self.host+graph['graph_uri'],
+            'long_desc': long_desc,
+        }
+        msg_obj.extradata.update(graph['parameter_dict'])
+        self.broadcast(msg_obj)
 
     def analyze_graphs(self):
         for graph in self.monitored_graphs:
@@ -137,5 +176,5 @@ class GraphiteDashboardMonitor(core.Monitor):
 
     def read(self):
         self.analyze_graphs()
-        time.sleep(1)
+        time.sleep(self.polling_interval_sec)
         return []
