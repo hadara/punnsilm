@@ -62,15 +62,16 @@ class GraphiteDashboardMonitor(core.Monitor):
                 self._parse_dashboard_graph_def(target_uri, parameter_dict, graph_uri)
             except:
                 logging.exception('failed to parse graph:'+str(graph_uri))
+                continue
 
-        graphd = {
-            'target_uri': target_uri,
-            'parameter_dict': parameter_dict,
-            'graph_uri': graph_uri,
-        }
-        self.monitored_graphs.append(graphd)
+            graphd = {
+                'target_uri': target_uri,
+                'parameter_dict': parameter_dict,
+                'graph_uri': graph_uri,
+            }
+            self.monitored_graphs.append(graphd)
 
-        self._get_graph_data(graph_uri)
+            self._get_graph_data(graph_uri)
 
     def _parse_dashboard_graph_def(self, target_uri, parameter_dict, graph_uri):
         for target in parameter_dict['target']:
