@@ -97,8 +97,9 @@ class RXGroup(Group):
                         (self.name, str(fieldname), str(msg.extradata)))
                     continue
                 except TypeError:
-                    logging.warn('grouper %s: unable to match field %s against message that doesnt have any parsed attributes' % (
-                        self.name, str(fieldname),))
+                    if __debug__:
+                        logging.debug("grouper %s: unable to match field %s against a message %s that doesn't have any parsed attributes" % (
+                            self.name, str(fieldname), str(msg)))
                     continue
             else:
                 fieldval = getattr(msg, fieldname)
