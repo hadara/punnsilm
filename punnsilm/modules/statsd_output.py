@@ -32,8 +32,6 @@ class StatsdOutput(core.Output):
         abount past events would falsify statistics.
         """
         if msg.timestamp < (datetime.datetime.now() - datetime.timedelta(minutes=1)):
-            if __debug__:
-                logging.debug("statsd ignore old msg @",msg.timestamp)
             return True
         return False
 
@@ -50,7 +48,7 @@ class StatsdOutput(core.Output):
     def send_to_statsd(self, msg):
         if self.msg_too_old(msg) == True:
             if __debug__:
-                logging.debug("msg too old:",msg)
+                logging.debug("msg too old: %s" % (str(msg),))
             return None
 
         base_key = ''
@@ -68,6 +66,8 @@ class StatsdOutput(core.Output):
         #    some.key.<value_of_the_corresponding_extradata_item>
 
         if msg.extradata is not None:
+            del_keys = []
+
             for k,v in msg.extradata.items():
                 if k[0] != '_':
                     continue
@@ -100,6 +100,13 @@ class StatsdOutput(core.Output):
                     key = key.lower()
                     self.send_counter(key)
                     have_seen_name_group = True
+                del_keys.append(k)
+
+            for key in del_keys:
+                # XXX: if message isn't copied between nodes multiple statsd outputs might see
+                # the same message. To avoid double send under such a scenario we will delete
+                # keys that we have "consumed"
+                del msg.extradata[key]
 
         if not have_seen_name_group:
             key = base_key + ".%s" % (msg.group,)
