@@ -107,17 +107,19 @@ and forwards result to different output nodes.
 Following configuration options are available for this node:
 
  - *groups*: a dictionary containing regular expression groups. Key is the name of the group and the group itself is defined with a
- dictionary that contains keys rx_list which holds a list of regular expressions and outputs node that contains name of the
- output nodes to forward this message to should any of the regular expressions match.
+ dictionary that contains keys rx_list which holds a list of regular expressions and outputs node that contains names of the
+ output nodes to forward this message to should any of the regular expressions match. The ooutputs node can also be empty list if
+ you just want to ignore the matched message.
  regular expressions in the rx_list can either be plain string in which case it's assumed that we should match this expression
  against the message.content field or a tuple where the first element denotes message field that we should match the regular
- expression against.
+ expression against. Message field names that start with . reference extradata part of the message which might be filled in different
+ ways by different nodes but rx_grouper node in particular places all the named regex groups that are matched there.
+ Writing match rules against specific parts of the message extradata that are parsed by previous nodes allows you to write
+ much more efficient and simpler rulesets than just matching against full log string everywhere.
 
 Example:
-The following defines a node called filter that is of type rx_grouper and contains a single match group which has 2 match rules.
-The first one matches if message.content field contains the word hint and the second rule matches if message.host field contains
-"publicapi1"
-If either of these rules match the output is sent to the node called writer.
+The following defines a node called filter that is of type rx_grouper and contains a single match group which has 3 match rules.
+If any of these rules match the output is sent to the node called writer.
 
     {
         'name': 'filter',
@@ -126,14 +128,18 @@ If either of these rules match the output is sent to the node called writer.
             'groups': {
                 'imap_auth': {
                     'rx_list': [
-                        ".*hint.*",
-                        ("host", "publicapi1"),
+                        ".*hint.*", # match message.content against this regexp
+                        ("host", "publicapi1"), # match message.host against regexp publicapi1
+                        (".user", "foobar"), # match message extradata key user against regexp foobar
                     ],
                     'outputs': ['writer',],
                 },
             },
         },
     },
+  - *match*: what matching strategy to use. Possible values are:
+    * all (attempts to match all the defined groups against each message. This is the default behaviour)
+    * first (stops matching on first successful match)
 
 ### rewriter
 Allows rewrite/replace of message contents.

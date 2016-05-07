@@ -15,6 +15,16 @@ from punnsilm import core
 STATS_ROOT = "/tmp/"
 STATS_WRITE_EVERY_X_MSGS = 50000
 
+# stop on first succesful match
+MATCH_FIRST = 0
+# attempt to match all the defined groups
+MATCH_ALL = 1
+KNOWN_MATCH_TYPES = {
+    'first': MATCH_FIRST,
+    'all': MATCH_ALL,
+}
+DEFAULT_MATCH_TYPE = 'all'
+
 if hasattr(time, "perf_counter"):
     pcounter = time.perf_counter
 else:
@@ -133,6 +143,15 @@ class RXGrouper(core.PunnsilmNode):
         groups = kwargs['groups']
         del kwargs['groups']
 
+        match_type_name = kwargs.get('match', DEFAULT_MATCH_TYPE)
+        self.match_strategy = KNOWN_MATCH_TYPES.get(match_type_name)
+        if self.match_strategy is None:
+            msg = 'match type %d is unknown' % (match_type_name,)
+            logging.warn(msg)
+            raise Exception(msg)
+        if 'match' in kwargs:
+            del kwargs['match']
+
         # is it OK to modify messages that go through us or should
         # make a copy that we modify and send downstream.
         # This might be useful in the cases when one wants to ensure
@@ -231,10 +250,8 @@ class RXGrouper(core.PunnsilmNode):
                 self._subgroup_broadcast(group, msg_copy)
                         
                 have_match = True
-                if __debug__:
-                    #print "match:",group,msg.content
-                    pass
-                # XXX: break or continue?
+                if self.match_strategy == MATCH_FIRST:
+                    break
 
         if not have_match:
             # FIXME: maybe we should cache the falltrhough obj as attribute
