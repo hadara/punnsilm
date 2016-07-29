@@ -35,7 +35,9 @@ You can run it with:
 
     /srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py
 
-to run it on startup add the following to the crontab of the user that should run it:
+use --help to see all the availabel command line options.
+
+To run it on startup add the following to the crontab of the user that should run it:
     
     @reboot cd /srv/data/punnsilm/ && /srv/data/punnsilm-venv/bin/python /srv/data/punnsilm/punnsilm.py 1> /dev/null 2> /dev/null &
 

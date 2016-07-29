@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import time
 import atexit
@@ -66,6 +67,8 @@ from several different Input nodes you will end up with two instances of that no
 Basically we will try to build the initial graph as we normally would but will ignore all of the
 nodes that aren't present in this whitelist. Argument should be comma separated list on node names.""", dest="node_whitelist")
     parser.add_option('--debug', help="""Print out a lot of debug information""", dest="debug", action="store_true")
+    parser.add_option('--extra-module-dir', help="""Additional directory to load modules from. Can be given more than once""", dest="module_dir",
+        default=[], action='append')
     (options, args) = parser.parse_args()
 
     if options.debug:
@@ -89,8 +92,14 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
     if options.node_whitelist:
         node_whitelist = options.node_whitelist.split(",")
 
+    extra_module_dirs = options.module_dir
+    for extra_module_dir in extra_module_dirs:
+        if not os.path.exists(extra_module_dir):
+            logging.error('extra module directory %s does not exist!' % (str(extra_module_dir),)) 
+            sys.exit(-1)
+
     graph = init_graph(node_whitelist=node_whitelist, test_mode=options.test, keep_state=keep_state, config=options.config, 
-                concurrency=options.concurrency_method)
+                concurrency=options.concurrency_method, extra_module_dirs=extra_module_dirs)
     runnables = graph.start()
 
     if options.daemonize:

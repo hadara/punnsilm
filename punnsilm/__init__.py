@@ -1,4 +1,5 @@
 import os
+import imp
 import sys
 import glob
 import inspect
@@ -122,13 +123,17 @@ def _execfile(filename, _globals, _locals):
         with open(filename, "rb") as fd:
             exec(compile(fd.read(), filename, 'exec'), _globals, _locals)
 
-def load_module(module):
+def load_module(module, is_absolute=False):
     logging.info('loading module %s' % (module,))
 
     try:
-        mod = importlib.import_module(module)
+        if is_absolute:
+            mod = imp.load_source('module.name', module)
+        else:
+            mod = importlib.import_module(module)
     except:
         logging.exception('failed to load module %s' % (str(module),))
+        return
 
     for name, obj in inspect.getmembers(mod):
         if inspect.isclass(obj) and issubclass(obj, core.PunnsilmNode):
@@ -143,21 +148,26 @@ def load_module(module):
     return mod
 
 def load_modules(moduledir):
-    # FIXME: currently the argument is completely ignored.
-    # We should allow to use it in order to override the module directory
-    moduledir = DEFAULT_MODULEDIR
-    absolute_moduledir = os.path.join(os.path.dirname(__file__), moduledir)
+    if moduledir[0] != "/":
+        absolute_moduledir = os.path.join(os.path.dirname(__file__), moduledir)
+    else:
+        absolute_moduledir = moduledir
+
     files = os.listdir(absolute_moduledir)
 
     for filename in files:
-        if not os.path.isfile(os.path.join(absolute_moduledir, filename)):
+        absolute_modulepath = os.path.join(absolute_moduledir, filename)
+        if not os.path.isfile(absolute_modulepath):
             continue
         if not filename.endswith(".py"):
             continue
         if filename == '__init__.py':
             continue
 
-        load_module('.'.join(('punnsilm', moduledir, filename[:-3])))
+        if moduledir[0] == '/':
+            load_module(os.path.join(moduledir, filename), is_absolute=True)
+        else:
+            load_module('.'.join(('punnsilm', moduledir, filename[:-3])))
 
     logging.info('module loading finished. Following modules are available: %s' % (
         str(','.join(typemap.keys()))
@@ -202,10 +212,14 @@ def read_config(filename=None):
 
     return retd['NODE_LIST']
     
-def init_graph(node_whitelist=None, test_mode=False, keep_state=True, config=None, concurrency=DEFAULT_CONCURRENCY_METHOD):
+def init_graph(node_whitelist=None, test_mode=False, keep_state=True, config=None, concurrency=DEFAULT_CONCURRENCY_METHOD, extra_module_dirs=None):
     """reads in configuration and initializes data structures
     """
     load_modules(DEFAULT_MODULEDIR)
+    if extra_module_dirs is not None:
+        for module_dir in extra_module_dirs:
+            logging.info("loading extra module dir: %s" % (module_dir,))
+            load_modules(module_dir)
 
     nodelist = read_config(config)
     nodemap = create_nodes(nodelist, node_whitelist=node_whitelist, test_mode=test_mode, keep_state=keep_state, concurrency=concurrency)
