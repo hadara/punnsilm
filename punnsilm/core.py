@@ -162,8 +162,8 @@ class Monitor(PunnsilmNode):
                             # we only have a 1s precision so it's rather probable that there might be
                             # several loglines from the same second than our last_seen_msg_ts of which
                             # we haven't seen some. By using > instead of >= we ensure that we at least see
-                            # all the messages once, but some might be seen twise. Adding some seen_line_checksum
-                            # is one way around this if it ever becomes a problem
+                            # all the messages once, but some might be seen more than once. 
+                            # Adding some seen_line_checksum is one way around this if it ever becomes a problem
                             if last_seen_msg_ts is not None and last_seen_msg_ts > msg.timestamp:
                                 # initialize timestamp exists and we are currently seeing records
                                 # that are older than this
@@ -171,7 +171,6 @@ class Monitor(PunnsilmNode):
                                 continue
                             initialize_mode = False
                             logging.info("%s: initialize finished. Ignored %d lines" % (str(self), initialized_ignored_lines,))
-                            #raise Exception(last_seen_msg_ts)
 
                         self.broadcast(msg)
                         self.set_state('last_msg_ts', msg.timestamp)
@@ -257,11 +256,28 @@ class FileMonitor(Monitor):
             time.sleep(1)
             raise
 
+        stat_struct = os.fstat(self._fd.fileno())
+        inode_nr = stat_struct.st_ino
+        last_inode_nr = self.get_state('inode_nr')
+        file_size = stat_struct.st_size
+        last_saved_pos = self.get_state('file_pos')
+        if last_inode_nr == inode_nr and last_saved_pos < file_size:
+            self._fd.seek(last_saved_pos)
+        self.set_state('inode_nr', inode_nr)
+        self._save_file_state()
+
         return True
+
+    def _save_file_state(self):
+        fpos = self._fd.tell()
+        self.set_state('file_pos', fpos)
 
     def read(self):
         self._maybe_reopen()
 
+        WRITE_POSITION_EVERY_N_LINES = 100
+
+        state_lines = 0
         while 1:
             try:
                 l = self._fd.readline()
@@ -280,6 +296,11 @@ class FileMonitor(Monitor):
                     logging.debug("no new data in %s last_size=%s" % (str(self), str(self._last_file_size)))
                     time.sleep(2)
                 continue
+
+            state_lines += 1
+            if state_lines >= WRITE_POSITION_EVERY_N_LINES:
+                self._save_file_state()
+                state_lines = 0
 
             l = l.decode('utf-8')
             yield l
