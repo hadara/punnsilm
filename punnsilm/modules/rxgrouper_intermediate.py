@@ -3,6 +3,8 @@ import copy
 import json
 import time
 import logging
+import operator
+import functools
 
 try:
     import regex as re
@@ -24,22 +26,47 @@ KNOWN_MATCH_TYPES = {
     'all': MATCH_ALL,
 }
 DEFAULT_MATCH_TYPE = 'all'
+MEASURE_RX_PERF = False
 
 if hasattr(time, "perf_counter"):
     pcounter = time.perf_counter
 else:
     pcounter = time.clock
 
+# regexp string id (memptr.) -> compiled rx. mappings
+rx_cachemap = {}
+
+# XXX: functions usable in the configuration
+def match_field(msg, fieldname, rx):
+    rx_c = rx_cachemap.get(rx)
+    if rx_c is None:
+        rx_c = re.compile(rx, re.UNICODE)
+        rx_cachemap[rx] = rx_c
+
+    if msg.extradata is None:
+        return False
+    # XXX: have to think about it a bit... is returning '' for missing
+    # msg. attributes safe or should we communicate error back to upper
+    # layers. We are obviously loosing information here
+    match_obj = rx_c.match(msg.extradata.get(fieldname, ''))
+    if match_obj is None:
+        return False
+    for k,v in match_obj.groupdict().items():
+        msg.extradata[k] = v
+    return True
+
+def AND(_, *args):
+    return functools.reduce(operator.__and__, args)
+
+def OR(_, *args):
+    return functools.reduce(operator.__or__, args)
+# /XXX
+
 class Group(object):
     def __init__(self, name, outputs):
         self.name = name
         self.outputs = outputs
         self.matches = 0
-
-    def mark_matched(self, msg):
-        self.matches += 1
-        if __debug__:
-            logging.debug("group match: %s total %d" % (self.name, self.matches))
 
     def __str__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.name)
@@ -50,7 +77,7 @@ class RXGroup(Group):
     # default field to match regexps against
     DEFAULT_FIELD = 'content'
 
-    def __init__(self, name, outputs, rx_list=None, disables_fallthrough=False, name_transform=None):
+    def __init__(self, name, outputs, rx_list=None, match_rule=None, disables_fallthrough=False, name_transform=None):
         """
         @arg disables_fallthrough: if True then matching this group doesn't disable matching of the fallthrough
             group. This is useful when you just want to send some of the log lines to stats engine but this doesn't
@@ -62,7 +89,15 @@ class RXGroup(Group):
         self.name_transform = name_transform
         self._perfd = {}
 
-        self._init_rx_list(rx_list)
+        if rx_list:
+            self._init_rx_list(rx_list)
+            self.match = self.match_rx_list
+        elif match_rule:
+            self._init_match_rule(match_rule)
+            self._match_rule = match_rule
+            self.match = self.match_rule
+        else:
+            self.match = None
 
     def get_performance_counters(self):
         return self._perfd
@@ -75,6 +110,10 @@ class RXGroup(Group):
             return self.name_transform % group.groupdict()
         return self.name
 
+    def _init_match_rule(self, match_rule):
+        # FIXME: cache RX entries
+        self._match_rule = match_rule
+
     def _init_rx_list(self, rx_list):
         self._rx_list = []
 
@@ -82,18 +121,28 @@ class RXGroup(Group):
             # probably the _fallback node 
             return True
 
-        # rx elements are either regexp strings in which case we match it against the content field
+        # rx elements are either regexp strings, in which case we match it against the content field,
         # or tuple where the first element is fieldname and the second one holds regexp
         for rx in rx_list:
             if isinstance(rx, type('')):
-                entry = (self.DEFAULT_FIELD, rx, re.compile(rx))
+                entry = (self.DEFAULT_FIELD, rx, re.compile(rx, re.UNICODE))
             else:
                 fieldname, rx = rx
-                entry = (fieldname, rx, re.compile(rx))
+                entry = (fieldname, rx, re.compile(rx, re.UNICODE))
+
             self._rx_list.append(entry)
             self._perfd[rx] = {'evaluations': 0, 'matches': 0, 'total_time': 0}
 
-    def match(self, msg):
+    def match_rule(self, msg):
+        def _rec_match_rule(msg, rule):
+            if type(rule) != tuple:
+                return rule
+            # somewhat unintuitively generator comprehension would be slower than list comprehension in our case
+            return rule[0](msg, *[_rec_match_rule(msg, x) for x in (rule[1:])])
+
+        return _rec_match_rule(msg, self._match_rule)
+
+    def match_rx_list(self, msg):
         """returns re match object if msg matches this group
         None otherwise
         """
@@ -113,27 +162,32 @@ class RXGroup(Group):
                     continue
             else:
                 fieldval = getattr(msg, fieldname)
-            start_time = pcounter()
+
+            if MEASURE_RX_PERF is True:
+                start_time = pcounter()
             match_obj = rx_c.match(fieldval)
-            time_spent = pcounter() - start_time
-            perf_rec = self._perfd[rx]
-            perf_rec['evaluations'] += 1
-            perf_rec['total_time'] += time_spent
+            if MEASURE_RX_PERF is True:
+                time_spent = pcounter() - start_time
+                perf_rec = self._perfd[rx]
+                perf_rec['evaluations'] += 1
+                perf_rec['total_time'] += time_spent
             if match_obj:
-                perf_rec['matches'] += 1
-                if __debug__:
-                    logging.debug('%s matched rx %s with %s' % (
-                        str(self), str(rx), fieldval)
-                    )
-                self.mark_matched(msg)
+                if MEASURE_RX_PERF is True:
+                    perf_rec['matches'] += 1
+                #if __debug__:
+                #    logging.debug('%s matched rx %s with %s' % (
+                #        str(self), str(rx), fieldval)
+                #    )
+                self.matches += 1
                 return match_obj
             else:
-                if __debug__:
-                    logging.debug('%s no match: rx %s msg: %s' % (
-                        str(self), str(rx), fieldval)
-                    )
+                #if __debug__:
+                #    logging.debug('%s no match: rx %s msg: %s' % (
+                #        str(self), str(rx), fieldval)
+                #    )
+                pass
 
-        return None
+        return False
 
 class RXGrouper(core.PunnsilmNode):
     name = 'rx_grouper'
@@ -168,6 +222,7 @@ class RXGrouper(core.PunnsilmNode):
         self.output_map = {}
         self._rx_list = []
         self._subgroups = {}
+        self._matchable_subgroups = []
         self._init_subgroups(groups)
 
         # We want to show warning about missing output only once
@@ -199,7 +254,9 @@ class RXGrouper(core.PunnsilmNode):
 
     def _init_subgroups(self, groups):
         for group_name, group_config in groups.items():
-            self._init_subgroup(group_name, group_config)
+            group = self._init_subgroup(group_name, group_config)
+            if group.match is not None:
+                self._matchable_subgroups.append(group)
 
     def _init_subgroup(self, group_name, group_config):
         # FIXME: maybe all the RX stuff should be implemented inside
@@ -211,6 +268,7 @@ class RXGrouper(core.PunnsilmNode):
             raise
 
         self._subgroups[group_name] = group
+        return group
 
     def add_output(self, output):
         core.PunnsilmNode.add_output(self, output)
@@ -232,9 +290,9 @@ class RXGrouper(core.PunnsilmNode):
     def append(self, msg):
         have_match = False
 
-        for group in self._subgroups.values():
+        for group in self._matchable_subgroups:
             match_group = group.match(msg)
-            if match_group is not None:
+            if match_group is not False:
                 # Multiple groups might match the message and if we add some
                 # extra attributes to it we might have to make a copy so downstream nodes
                 # would see a consistent view even if the message is passed between the
@@ -242,11 +300,13 @@ class RXGrouper(core.PunnsilmNode):
                 # It's usually not required though and is just NOOP
                 msg_copy = self._copier(msg)
                 msg_copy.group = group.get_formated_name(group)
-                groupdict = match_group.groupdict()
-                if groupdict:
-                    if msg_copy.extradata is None:
-                        msg_copy.extradata = {}
-                    msg_copy.extradata.update(groupdict)
+                # XXX: if it's rx_list matcher the return value is match object itself
+                if match_group is not True:
+                    groupdict = match_group.groupdict()
+                    if groupdict:
+                        if msg_copy.extradata is None:
+                            msg_copy.extradata = {}
+                        msg_copy.extradata.update(groupdict)
                 self._subgroup_broadcast(group, msg_copy)
                         
                 have_match = True
@@ -254,7 +314,6 @@ class RXGrouper(core.PunnsilmNode):
                     break
 
         if not have_match:
-            # FIXME: maybe we should cache the falltrhough obj as attribute
             fallthrough = self._subgroups.get('_fallthrough', None)
             if fallthrough:
                 # FIXME: think about message copying and consistency
@@ -278,3 +337,11 @@ class RXGrouper(core.PunnsilmNode):
                 continue
 
             output_node.append(msg)
+
+
+# HOOKS
+EXPORTABLE_CONFIG_FUNCS = {
+    'AND': AND,
+    'OR': OR,
+    'match_field': match_field,
+}

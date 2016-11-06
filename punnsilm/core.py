@@ -12,6 +12,8 @@ import os.path
 
 from . import state_manager
 
+import cProfile
+
 class ImplementMe(Exception):
     pass
 
@@ -138,6 +140,9 @@ class Monitor(PunnsilmNode):
         return self._worker
 
     def _run(self):
+        # pr = cProfile.Profile()
+        # pr.enable()
+
         if self.concurrency_cls != threading.Thread:
             setproctitle.setproctitle('punnsilm: '+self.name)
 
@@ -181,6 +186,8 @@ class Monitor(PunnsilmNode):
                 break
             except:
                 logging.exception('unexpected failure in %s' % (str(self),))
+        # pr.disable()
+        # pr.dump_stats('rx.profile')
 
     def parse_message(self, l):
         if self.msg_cls != None:
