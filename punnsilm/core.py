@@ -25,6 +25,18 @@ class MsgJSONEncoder(json.JSONEncoder):
         if isinstance(obj, datetime.date):
             return obj.isoformat()
 
+def broadcast_test_decorator(broadcast_func):
+    """wrap broadcast function with some debug functionality 
+    """
+    def _broadcast_test_decorator(msg):
+        if not hasattr(msg, 'depth'):
+            setattr(msg, 'depth', 0)
+        msg.depth += 1
+        broadcast_func(msg)
+        msg.depth -=1
+
+    return _broadcast_test_decorator
+
 class Message(object):
     def __init__(self, timestamp, host, content, extra_params=None):
         self.timestamp = timestamp
@@ -62,14 +74,24 @@ class Message(object):
 class PunnsilmNode(object):
     """baseclass for all the input, output and intermediate nodes
     """
-    def __init__(self, name=None, outputs=None):
+    def __init__(self, name=None, outputs=None, test_mode=False):
         # this will hold just the names of the outputs
         self._configured_outputs = outputs
         # this will at some point hold actual output objects
         # once they are initialized
         self.outputs = []
 
+        # are we running in the test mode
+        self.test_mode = test_mode
+        # this module is test mode aware and has necessary hooks in place
+        # to avoid having undesired side effects while testing
+        self.have_test_hooks = False
+
         self.name = name
+
+        if test_mode:
+            self.broadcast = broadcast_test_decorator(self.broadcast)
+
         self._read_state()
 
     def __str__(self):
@@ -113,6 +135,8 @@ class PunnsilmNode(object):
         self.outputs.append(output)
 
     def broadcast(self, msg):
+        """broadcast msg to output nodes
+        """
         for o in self.outputs:
             o.append(msg)
 
@@ -309,7 +333,8 @@ class FileMonitor(Monitor):
                 self._save_file_state()
                 state_lines = 0
 
-            l = l.decode('utf-8')
+            if not isinstance(l, str):
+                l = l.decode('utf-8')
             yield l
 
 class Output(PunnsilmNode):

@@ -62,6 +62,18 @@ def OR(_, *args):
     return functools.reduce(operator.__or__, args)
 # /XXX
 
+def subgroup_broadcast_test_decorator(broadcast_func):
+    """wrap broadcast function with some debug functionality 
+    """
+    def _broadcast_test_decorator(group, msg):
+        if not hasattr(msg, 'depth'):
+            setattr(msg, 'depth', 0)
+        msg.depth += 1
+        broadcast_func(group, msg)
+        msg.depth -=1
+
+    return _broadcast_test_decorator
+
 class Group(object):
     def __init__(self, name, outputs):
         self.name = name
@@ -77,7 +89,7 @@ class RXGroup(Group):
     # default field to match regexps against
     DEFAULT_FIELD = 'content'
 
-    def __init__(self, name, outputs, rx_list=None, match_rule=None, disables_fallthrough=False, name_transform=None):
+    def __init__(self, name, outputs, rx_list=None, match_rule=None, disables_fallthrough=False, name_transform=None, test_mode=False):
         """
         @arg disables_fallthrough: if True then matching this group doesn't disable matching of the fallthrough
             group. This is useful when you just want to send some of the log lines to stats engine but this doesn't
@@ -98,6 +110,22 @@ class RXGroup(Group):
             self.match = self.match_rule
         else:
             self.match = None
+
+        if test_mode and self.match:
+            self.match = self.test_match_printer(self.match)
+
+    def test_match_printer(self, matchfunc):
+        def _test_match_printer(msg):
+            res = matchfunc(msg)
+            res_bool = bool(res)
+            match_str = ''
+            if res_bool:
+                match_str = 'OK'
+            else:
+                match_str = 'NOK'
+            print(msg.depth*2*" "+"rx_group '%s' -> %s" % (self.name, match_str))
+            return res
+        return _test_match_printer
 
     def get_performance_counters(self):
         return self._perfd
@@ -239,6 +267,9 @@ class RXGrouper(core.PunnsilmNode):
 
         self._stats_write_counter = 0
 
+        if self.test_mode:
+            self._subgroup_broadcast = subgroup_broadcast_test_decorator(self._subgroup_broadcast)
+
     def _gather_output_list_from_subgroups(self, groups):
         """create a list of unique output node names that are used in subgroups of this grouper
         """
@@ -262,6 +293,8 @@ class RXGrouper(core.PunnsilmNode):
         # FIXME: maybe all the RX stuff should be implemented inside
         # the group
         try:
+            if self.test_mode:
+                group_config['test_mode'] = True
             group = RXGroup(group_name, **group_config)
         except:
             logging.error('error encountered while initializing subgroup "%s" conf: %s' % (group_name, str(group_config)))
