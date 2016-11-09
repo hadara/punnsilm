@@ -11,7 +11,7 @@ class StatsdOutput(core.Output):
     name = 'statsd_output'
 
     def __init__(self, **kwargs):
-        core.Output.__init__(self, name=kwargs['name'])
+        core.Output.__init__(self, name=kwargs['name'], test_mode=kwargs.get('test_mode', False))
         self.host = kwargs.get('host', '127.0.0.1')
         self.port = kwargs.get('port', 8125)
         self.key_prefix = kwargs.get('key_prefix', '')
@@ -21,7 +21,26 @@ class StatsdOutput(core.Output):
         self.time_factor = kwargs.get('time_factor', None)
         if self.time_factor is not None:
             self.time_factor = float(self.time_factor)
+
+        self.have_test_hooks = True
+
         statsd.Connection.set_defaults(host=self.host, port=self.port)
+
+        if self.test_mode:
+            self.send_counter = self._return_printer(self.send_counter)
+            self.send_timer = self._return_printer(self.send_timer)
+            # msg. freshness checks are disabled in the test mode
+            self.msg_too_old = lambda x: False
+
+    def _return_printer(self, func):
+        """decorator that prints out whatever the function returns
+        """
+        def __return_printer(*args):
+            res = func(*args)
+            msg = args[0]
+            print((msg.depth*2+2)*" "+res)
+            return res
+        return __return_printer
 
     def append(self, msg):
         self.send_to_statsd(msg)
@@ -35,15 +54,19 @@ class StatsdOutput(core.Output):
             return True
         return False
 
-    def send_counter(self, key):
+    def send_counter(self, msg, key):
+        # XXX: msg arg. is required by test mode decorator
         statsd_counter = statsd.Counter(key)
         statsd_counter += 1
+        return "%s: C %s" % (self.name, key, )
 
-    def send_timer(self, key, extraname, value):
+    def send_timer(self, msg, key, extraname, value):
+        # XXX: msg arg. is required by test mode decorator
         timer = statsd.Timer(key)
         if self.time_factor is not None:
             value *= self.time_factor
         timer.send(extraname, value)
+        return "%s: T %s %s %s" % (self.name, key, extraname, value)
 
     def send_to_statsd(self, msg):
         if self.msg_too_old(msg) == True:
@@ -94,11 +117,11 @@ class StatsdOutput(core.Output):
                         else:
                             logging.warning('group %s referenced from timer %s was not found' % (
                                 lookup_key, k,))
-                    self.send_timer(key, extraname, float(v))
+                    self.send_timer(msg, key, extraname, float(v))
                 elif tail == "value":
                     key = '.'.join((base_key, key_prefix, v))
                     key = key.lower()
-                    self.send_counter(key)
+                    self.send_counter(msg, key)
                     have_seen_name_group = True
                 del_keys.append(k)
 
@@ -111,6 +134,6 @@ class StatsdOutput(core.Output):
         if not have_seen_name_group:
             key = base_key + ".%s" % (msg.group,)
             if __debug__:
-                logging.debug("group send:",key)
+                logging.debug("group send: %s" % (str(key),))
 
-            self.send_counter(key)
+            self.send_counter(msg, key)
