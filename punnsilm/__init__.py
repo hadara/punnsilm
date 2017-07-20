@@ -240,6 +240,7 @@ def read_config(filename=None):
         sys.exit(-1)
 
     config_namespace = construct_config_namespaces()
+    retd.update(config_namespace)
 
     # we create a special import_nodes function that can be used
     # from the main configuration file to read in additional configuration
