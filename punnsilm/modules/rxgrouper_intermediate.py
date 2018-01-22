@@ -162,7 +162,6 @@ class RXGroup(Group):
     def match_rule(self, msg):
         def _rec_match_rule(msg, rule):
             if type(rule) != tuple:
-                print("match_rule: early return ", rule)
                 return rule
             return lambda: rule[0](msg, *(_rec_match_rule(msg, x) for x in (rule[1:])))
 
