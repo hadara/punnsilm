@@ -3,8 +3,6 @@ import copy
 import json
 import time
 import logging
-import operator
-import functools
 
 try:
     import regex as re
@@ -56,10 +54,10 @@ def match_field(msg, fieldname, rx):
     return True
 
 def AND(_, *args):
-    return functools.reduce(operator.__and__, args)
+    return all((x() if callable(x) else x for x in args))
 
 def OR(_, *args):
-    return functools.reduce(operator.__or__, args)
+    return any((x() if callable(x) else x for x in args))
 # /XXX
 
 def subgroup_broadcast_test_decorator(broadcast_func):
@@ -164,11 +162,11 @@ class RXGroup(Group):
     def match_rule(self, msg):
         def _rec_match_rule(msg, rule):
             if type(rule) != tuple:
+                print("match_rule: early return ", rule)
                 return rule
-            # somewhat unintuitively generator comprehension would be slower than list comprehension in our case
-            return rule[0](msg, *[_rec_match_rule(msg, x) for x in (rule[1:])])
+            return lambda: rule[0](msg, *(_rec_match_rule(msg, x) for x in (rule[1:])))
 
-        return _rec_match_rule(msg, self._match_rule)
+        return _rec_match_rule(msg, self._match_rule)()
 
     def match_rx_list(self, msg):
         """returns re match object if msg matches this group
