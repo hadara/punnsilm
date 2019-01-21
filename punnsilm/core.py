@@ -12,6 +12,8 @@ import os.path
 
 from . import state_manager
 
+import cProfile
+
 class ImplementMe(Exception):
     pass
 
@@ -22,6 +24,18 @@ class MsgJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime.date):
             return obj.isoformat()
+
+def broadcast_test_decorator(broadcast_func):
+    """wrap broadcast function with some debug functionality 
+    """
+    def _broadcast_test_decorator(msg):
+        if not hasattr(msg, 'depth'):
+            setattr(msg, 'depth', 0)
+        msg.depth += 1
+        broadcast_func(msg)
+        msg.depth -=1
+
+    return _broadcast_test_decorator
 
 class Message(object):
     def __init__(self, timestamp, host, content, extra_params=None):
@@ -60,14 +74,24 @@ class Message(object):
 class PunnsilmNode(object):
     """baseclass for all the input, output and intermediate nodes
     """
-    def __init__(self, name=None, outputs=None):
+    def __init__(self, name=None, outputs=None, test_mode=False):
         # this will hold just the names of the outputs
         self._configured_outputs = outputs
         # this will at some point hold actual output objects
         # once they are initialized
         self.outputs = []
 
+        # are we running in the test mode
+        self.test_mode = test_mode
+        # this module is test mode aware and has necessary hooks in place
+        # to avoid having undesired side effects while testing
+        self.have_test_hooks = False
+
         self.name = name
+
+        if test_mode:
+            self.broadcast = broadcast_test_decorator(self.broadcast)
+
         self._read_state()
 
     def __str__(self):
@@ -111,6 +135,8 @@ class PunnsilmNode(object):
         self.outputs.append(output)
 
     def broadcast(self, msg):
+        """broadcast msg to output nodes
+        """
         for o in self.outputs:
             o.append(msg)
 
@@ -138,6 +164,9 @@ class Monitor(PunnsilmNode):
         return self._worker
 
     def _run(self):
+        # pr = cProfile.Profile()
+        # pr.enable()
+
         if self.concurrency_cls != threading.Thread:
             setproctitle.setproctitle('punnsilm: '+self.name)
 
@@ -158,7 +187,12 @@ class Monitor(PunnsilmNode):
                         if initialize_mode is True:
                             # XXX: having the initialize conditional in the main
                             # loop isn't really optimal 
-                            last_seen_msg_ts = self.get_state('last_msg_ts')
+                            #last_seen_msg_ts = self.get_state('last_msg_ts')
+
+                            # FIXME: temporary hack until we get saving state working again
+                            # when processes are used for concurrency
+                            last_seen_msg_ts = datetime.datetime.now() - datetime.timedelta(seconds=60)
+
                             # we only have a 1s precision so it's rather probable that there might be
                             # several loglines from the same second than our last_seen_msg_ts of which
                             # we haven't seen some. By using > instead of >= we ensure that we at least see
@@ -181,6 +215,8 @@ class Monitor(PunnsilmNode):
                 break
             except:
                 logging.exception('unexpected failure in %s' % (str(self),))
+        # pr.disable()
+        # pr.dump_stats('rx.profile')
 
     def parse_message(self, l):
         if self.msg_cls != None:
@@ -302,7 +338,12 @@ class FileMonitor(Monitor):
                 self._save_file_state()
                 state_lines = 0
 
-            l = l.decode('utf-8')
+            if not isinstance(l, str):
+                try:
+                    l = l.decode('utf-8')
+                except:
+                    continue
+
             yield l
 
 class Output(PunnsilmNode):

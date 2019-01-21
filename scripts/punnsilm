@@ -69,6 +69,9 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
     parser.add_option('--debug', help="""Print out a lot of debug information""", dest="debug", action="store_true")
     parser.add_option('--extra-module-dir', help="""Additional directory to load modules from. Can be given more than once""", dest="module_dir",
         default=[], action='append')
+    parser.add_option('--connect-test-input', help="""Name of the source nodes to connect to stdin. Can be given more than once.
+All other source nodes will be disabled and specified source nodes will get their input from the stdin. Won't have any effect unless --test is also
+specified""", dest='connect_test_input', default=[], action='append')
     (options, args) = parser.parse_args()
 
     if options.debug:
@@ -99,7 +102,8 @@ nodes that aren't present in this whitelist. Argument should be comma separated 
             sys.exit(-1)
 
     graph = init_graph(node_whitelist=node_whitelist, test_mode=options.test, keep_state=keep_state, config=options.config, 
-                concurrency=options.concurrency_method, extra_module_dirs=extra_module_dirs)
+                concurrency=options.concurrency_method, extra_module_dirs=extra_module_dirs, 
+                connect_test_input=options.connect_test_input)
     runnables = graph.start()
 
     if options.daemonize:

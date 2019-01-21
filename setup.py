@@ -13,7 +13,6 @@ install_reqs = [
     'requests',
     'termcolor',
     'setproctitle',
-    'python-statsd',
 ]
 
 setup(name='punnsilm', 

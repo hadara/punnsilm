@@ -20,6 +20,9 @@ DEFAULT_CONCURRENCY_METHOD = "threads"
 # holds name to node class mapping, filled dynamically on startup
 typemap = {}
 
+# module name -> object mappings for all the loaded modules
+modulemap = {}
+
 class PunnsilmGraph(object):
     def __init__(self, nodemap):
         self.nodemap = nodemap
@@ -65,7 +68,7 @@ def create_node(node_conf):
     args = {}
     # copy relevant keys from the configuration to keyword args that will be fed to the
     # constructor
-    for key in ('name', 'outputs'):
+    for key in ('name', 'outputs', 'test_mode'):
         if key in node_conf:
             args[key] = node_conf[key]
         if 'params' in node_conf:
@@ -76,13 +79,27 @@ def create_node(node_conf):
 
     return node
 
-def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True, concurrency='threads'):
+def test_appender(node, real_appender):
+    """basically a decorator for node.append() that prints out incoming messages for each node
+    when in test mode.
+    Attached to append() only in test mode so we won't pay performance penalty in the normal case
+    """
+    def _test_appender(msg):
+        print(msg.depth*2*" "+'%s received: %s' % (node.name, str(msg)))
+        if msg.extradata:
+            print((msg.depth*2+1)*" "+"  extradata: %s" % (msg.extradata,))
+        return real_appender(msg)
+    return _test_appender
+
+def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True, concurrency='threads', connect_test_input=None):
     """creates all the nodes specified in the configuration given in the argument
     returns result as a dictionary containing node.name -> node mappings
     """
     nodemap = {}
 
     for node_conf in nodelist:
+        if test_mode:
+            node_conf['test_mode'] = True
         node = create_node(node_conf)
 
         if node is None:
@@ -91,14 +108,31 @@ def create_nodes(nodelist, node_whitelist=None, test_mode=False, keep_state=True
             #   document it
             continue
 
+        if connect_test_input and isinstance(node, core.Monitor):
+            if node.name in connect_test_input:
+                node.filename = '-'
+                logging.info("reconnecting source node %s to stdin" % (node.name,))
+            else:
+                logging.warn("ignoring input node %s since it's not allowed by connect_test_input parameter" % (node.name,))
+                continue
+
         if node_whitelist and node.name not in node_whitelist:
             logging.warn("ignoring node %s because it's not in the whitelist" % (node.name,))
             continue
 
-        if test_mode and isinstance(node, core.Output):
-            logging.info("replacing %s with ConsoleOutput because test mode is enabled" % (str(node.name),))
-            real_node_name = node.name
-            node = typemap['console_output'](name=real_node_name)
+        if test_mode:
+            if isinstance(node, core.Output):
+                if node.have_test_hooks:
+                    logging.info("not replacing %s with ConsoleOutput since it's test mode aware" % (str(node.name),))
+                else:
+                    logging.info("replacing %s with ConsoleOutput because test mode is enabled" % (str(node.name),))
+                    real_node_name = node.name
+                    node = typemap['console_output'](name=real_node_name)
+
+            node.test_mode = True
+            if hasattr(node, 'append'):
+                orig_append = node.append
+                node.append = test_appender(node, orig_append)
 
         if not keep_state and hasattr(node, "continue_from_last_known_position"):
             logging.info("overriding continue_from_last_known_position flag")
@@ -121,7 +155,10 @@ def _execfile(filename, _globals, _locals):
     except NameError:
         # python3
         with open(filename, "rb") as fd:
-            exec(compile(fd.read(), filename, 'exec'), _globals, _locals)
+            # XXX: optimize doesn't really have intended results at least under py 3.5
+            # since our main interpreter is not called in the optimized mode.
+            # See https://bugs.python.org/issue27169
+            exec(compile(fd.read(), filename, 'exec', optimize=1), _globals, _locals)
 
 def load_module(module, is_absolute=False):
     logging.info('loading module %s' % (module,))
@@ -135,6 +172,7 @@ def load_module(module, is_absolute=False):
         logging.exception('failed to load module %s' % (str(module),))
         return
 
+    # register all the Punnsilm nodes found in the module in the global typemap
     for name, obj in inspect.getmembers(mod):
         if inspect.isclass(obj) and issubclass(obj, core.PunnsilmNode):
             if not hasattr(obj, "name"):
@@ -148,6 +186,8 @@ def load_module(module, is_absolute=False):
     return mod
 
 def load_modules(moduledir):
+    global modulemap
+
     if moduledir[0] != "/":
         absolute_moduledir = os.path.join(os.path.dirname(__file__), moduledir)
     else:
@@ -164,14 +204,27 @@ def load_modules(moduledir):
         if filename == '__init__.py':
             continue
 
+        mod = None
         if moduledir[0] == '/':
-            load_module(os.path.join(moduledir, filename), is_absolute=True)
+            mod = load_module(os.path.join(moduledir, filename), is_absolute=True)
         else:
-            load_module('.'.join(('punnsilm', moduledir, filename[:-3])))
+            mod = load_module('.'.join(('punnsilm', moduledir, filename[:-3])))
+        modulemap[mod.__name__] = mod
 
     logging.info('module loading finished. Following modules are available: %s' % (
         str(','.join(typemap.keys()))
     ))
+
+def construct_config_namespaces():
+    """returns local namespace dictionary that should be made available to configuration
+    nodes. This will contain functions that are explicitly imported by punnsilm modules
+    """
+    namespace = {}
+    for module_name, module in modulemap.items():
+        # FIXME: check for duplicates
+        if hasattr(module, 'EXPORTABLE_CONFIG_FUNCS'):
+            namespace.update(getattr(module, 'EXPORTABLE_CONFIG_FUNCS'))
+    return namespace
 
 def read_config(filename=None):
     """reads in configuration file
@@ -186,6 +239,9 @@ def read_config(filename=None):
         logging.error("configuration file %s does not exist!" % (filename,))
         sys.exit(-1)
 
+    config_namespace = construct_config_namespaces()
+    retd.update(config_namespace)
+
     # we create a special import_nodes function that can be used
     # from the main configuration file to read in additional configuration
     # files (which can't use this function anymore)
@@ -198,11 +254,11 @@ def read_config(filename=None):
             logging.warn('no node definitions found for pattern %s' % (relative_path,))
 
         # child config will see parent config NS and will be able to add new
-        # nodes to the NODE_LIST so it purely works on sidefects and doesn't really
+        # nodes to the NODE_LIST so it purely works on side effects and doesn't really
         # return anything.
 
         for dir_element in include_files:
-            _execfile(dir_element, retd, {})
+            _execfile(dir_element, retd, config_namespace)
 
     globalsd = {
         'import_nodes': import_nodes,
@@ -212,7 +268,7 @@ def read_config(filename=None):
 
     return retd['NODE_LIST']
     
-def init_graph(node_whitelist=None, test_mode=False, keep_state=True, config=None, concurrency=DEFAULT_CONCURRENCY_METHOD, extra_module_dirs=None):
+def init_graph(node_whitelist=None, test_mode=False, keep_state=True, config=None, concurrency=DEFAULT_CONCURRENCY_METHOD, extra_module_dirs=None, connect_test_input=None):
     """reads in configuration and initializes data structures
     """
     load_modules(DEFAULT_MODULEDIR)
@@ -222,5 +278,5 @@ def init_graph(node_whitelist=None, test_mode=False, keep_state=True, config=Non
             load_modules(module_dir)
 
     nodelist = read_config(config)
-    nodemap = create_nodes(nodelist, node_whitelist=node_whitelist, test_mode=test_mode, keep_state=keep_state, concurrency=concurrency)
+    nodemap = create_nodes(nodelist, node_whitelist=node_whitelist, test_mode=test_mode, keep_state=keep_state, concurrency=concurrency, connect_test_input=connect_test_input)
     return PunnsilmGraph(nodemap)
