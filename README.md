@@ -2,13 +2,12 @@
 Punnsilm is a tool for analyzing, monitoring, transforming and sending logs.
 
 # Install
-Punnsilm is developed on Python 3.3. In general I try to keep it Python 2.7 compatible
-but I only bring py2 support up-to-date every once in a while so any random checkout might
-not work under py2
+Punnsilm is developed under Python 3.X. It probably won't work under Python 2.X.
+Under Debian based distros you can install it with something like this:
 
-    sudo apt-get install python-regex
+    sudo apt-get install python3-regex
     cd /srv/data
-    virtualenv --system-site-packages punnsilm-venv
+    virtualenv -p `which python3` --system-site-packages punnsilm-venv
     hg clone http://bitbucket.org/hadara/punnsilm
     source punnsilm-venv/bin/activate
     cd punnsilm
