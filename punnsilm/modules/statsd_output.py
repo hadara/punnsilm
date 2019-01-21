@@ -1,8 +1,6 @@
 import logging
 import datetime
 
-import statsd
-
 from punnsilm import core
 
 import socket

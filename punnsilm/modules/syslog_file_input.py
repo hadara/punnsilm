@@ -74,6 +74,11 @@ class RsyslogTraditionalFileFormatParser(RsyslogParser):
     rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
     time_parser = timestamp_parser_rfc3164
 
+class FreeBSDSyslogFileFormatParser(RsyslogParser):
+    RE_SYSLOG_MESSAGE = """^(?P<timestamp>[A-Z][a-z]{2}\s+[0-9]+\s[0-9]{2}:[0-9]{2}:[0-9]{2})\s<(?P<facility>\w+).(?P<level>\w+)> (?P<host>[a-zA-Z0-9\-\_\.]+)\s(?P<content>.*)$"""
+    rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
+    time_parser = timestamp_parser_rfc3164
+
 class RsyslogFileFormatParser(RsyslogParser):
     RE_SYSLOG_MESSAGE = """^(?P<timestamp>[^\s]+)\s(?P<host>[a-zA-Z0-9\-\_\.]+)\s(?P<content>.*)$"""
     rx_syslog_message = re.compile(RE_SYSLOG_MESSAGE)
@@ -105,6 +110,7 @@ SYSLOG_FILE_PARSERS = {
     'rsyslog_traditional_file_format': RsyslogTraditionalFileFormatParser,
     'rsyslog_file_format': RsyslogFileFormatParser,
     'rsyslog_protocol23_format': RsyslogProtocol23FormatParser,
+    'freebsd_syslog_format': FreeBSDSyslogFileFormatParser,
 }
 
 class SyslogFileMonitor(FileMonitor):

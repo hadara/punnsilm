@@ -41,10 +41,10 @@ NODE_LIST = [
         'params': {
             'smtp_server': 'localhost',
             'smtp_port': 1337,
-            'from_address': 'hadara@bsd.ee',
+            'from_address': 'example@example.com',
             'send_interval': 30,
             'addresses': [
-                'hadara@bsd.ee',
+                'example@example.com',
             ],
         },
         'outputs': [],

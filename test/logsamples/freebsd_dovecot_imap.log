@@ -1,0 +1,6 @@
+Jan 21 19:06:28 <mail.info> xyz dovecot: imap-login: Login: user=<user3>, method=PLAIN, rip=10.1.2.3, lip=10.2.3.3, mpid=51689, TLS, session=<tyio4fp/vgBVHf60>
+Jan 21 19:07:55 <mail.info> xyz dovecot: imap(user1): Connection closed in=2517 out=957433
+Jan 21 19:36:38 <mail.info> xyz dovecot: imap(user3): Disconnected: Logged out in=335 out=3277916
+Jan 21 19:38:31 <mail.info> xyz dovecot: imap(user2): Disconnected for inactivity in=256 out=2199477
+Jan 21 19:39:01 <mail.info> xyz dovecot: imap-login: Login: user=<user1>, method=PLAIN, rip=10.1.2.3, lip=10.2.3.3, mpid=52482, TLS, session=<pzMYVvt/wgBVHf60>
+Jan 21 19:42:18 <mail.info> xyz dovecot: imap-login: Login: user=<user3>, method=PLAIN, rip=10.1.2.3, lip=10.2.3.3, mpid=52556, TLS, session=<Qq3QYft/egBVHf60>
