@@ -5,6 +5,34 @@ import statsd
 
 from punnsilm import core
 
+import socket
+
+DEFAULT_STATSD_PORT = 8125
+
+class SimpleStatsdSender():
+    def __init__(self, host, port=DEFAULT_STATSD_PORT):
+        self.host = host
+        self.port = port
+
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock.connect((host, port))
+
+    def _send(self, key, value):
+        send_val = ('%s:%s' % (key, value)).encode("utf-8")
+        #print(send_val)
+        try:
+            self._sock.send(send_val)
+        except:
+            pass
+
+    def send_counter(self, key, delta):
+        self._send(key, '%d|c' % delta)
+
+    def send_timer(self, key, timeval):
+        ms = timeval * 1000
+        self._send(key, '%0.08f|ms' % ms)
+
+
 class StatsdOutput(core.Output):
     """sends output to the Statsd daemon
     """
@@ -24,7 +52,7 @@ class StatsdOutput(core.Output):
 
         self.have_test_hooks = True
 
-        statsd.Connection.set_defaults(host=self.host, port=self.port)
+        self._statsd = SimpleStatsdSender(self.host, self.port)
 
         if self.test_mode:
             self.send_counter = self._return_printer(self.send_counter)
@@ -56,16 +84,17 @@ class StatsdOutput(core.Output):
 
     def send_counter(self, msg, key):
         # XXX: msg arg. is required by test mode decorator
-        statsd_counter = statsd.Counter(key)
-        statsd_counter += 1
+        self._statsd.send_counter(key, 1)
         return "%s: C %s" % (self.name, key, )
 
     def send_timer(self, msg, key, extraname, value):
         # XXX: msg arg. is required by test mode decorator
-        timer = statsd.Timer(key)
         if self.time_factor is not None:
             value *= self.time_factor
-        timer.send(extraname, value)
+        full_key = key
+        if extraname:
+            full_key += '.'+extraname
+        self._statsd.send_timer(full_key, value)
         return "%s: T %s %s %s" % (self.name, key, extraname, value)
 
     def send_to_statsd(self, msg):
