@@ -53,7 +53,10 @@ def flatten_stat_dict(grouper_name, stat_file):
 
 def calculate_additional_stats(statl):
     for v in statl:
-        v['time_per_evaluation'] = v['total_time'] / v['evaluations']
+        if v['evaluations'] > 0:
+            v['time_per_evaluation'] = v['total_time'] / v['evaluations']
+        else:
+            v['time_per_evaluation'] = 0
 
 # <outputs>
 OUTPUT_FIELD_ORDER = ('key', 'evaluations', 'matches', 'total_time', 'time_per_evaluation')

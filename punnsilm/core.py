@@ -187,7 +187,12 @@ class Monitor(PunnsilmNode):
                         if initialize_mode is True:
                             # XXX: having the initialize conditional in the main
                             # loop isn't really optimal 
-                            last_seen_msg_ts = self.get_state('last_msg_ts')
+                            #last_seen_msg_ts = self.get_state('last_msg_ts')
+
+                            # FIXME: temporary hack until we get saving state working again
+                            # when processes are used for concurrency
+                            last_seen_msg_ts = datetime.datetime.now() - datetime.timedelta(seconds=60)
+
                             # we only have a 1s precision so it's rather probable that there might be
                             # several loglines from the same second than our last_seen_msg_ts of which
                             # we haven't seen some. By using > instead of >= we ensure that we at least see
@@ -334,7 +339,11 @@ class FileMonitor(Monitor):
                 state_lines = 0
 
             if not isinstance(l, str):
-                l = l.decode('utf-8')
+                try:
+                    l = l.decode('utf-8')
+                except:
+                    continue
+
             yield l
 
 class Output(PunnsilmNode):

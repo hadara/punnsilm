@@ -9,6 +9,7 @@ try:
 except ImportError:
     logging.warn("regex module not available. Performance will suffer.")
     import re
+#import re
 
 from punnsilm import core
 
@@ -193,6 +194,8 @@ class RXGroup(Group):
             match_obj = rx_c.match(fieldval)
             if MEASURE_RX_PERF is True:
                 time_spent = pcounter() - start_time
+                if time_spent > 1.0:
+                    logging.warn('pathologically slow rx. %s in %s field:%s against %s took %.4fs' % (rx, self.name, str(fieldname), fieldval, time_spent))
                 perf_rec = self._perfd[rx]
                 perf_rec['evaluations'] += 1
                 perf_rec['total_time'] += time_spent
